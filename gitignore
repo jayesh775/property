@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+env/
+
+# Database — do NOT push the local DB to GitHub
+apnaghar.db
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block title %}List Your Property — ApnaGhar{% endblock %}
+
+{% block content %}
+<div class="form-page page-enter">
+  <div class="form-container">
+    <h1>List Your Property 🏠</h1>
+    <p>Fill in the details below and we'll add your property to our listings.</p>
+
+    <form id="listingForm">
+
+      <div class="form-group">
+        <label class="form-label">Society / Building Name *</label>
+        <input type="text" id="fSociety" class="form-input" placeholder="e.g. Green Valley Apartments" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Full Address with Pincode *</label>
+        <input type="text" id="fAddress" class="form-input" placeholder="e.g. Sector 62, Noida, Uttar Pradesh 201309" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">City *</label>
+        <select id="fCity" class="form-select" required>
+          <option value="">Select City</option>
+          <option>Noida</option>
+          <option>Delhi</option>
+          <option>Gurugram</option>
+          <option>Mumbai</option>
+        </select>
+      </div>
+
+      <!-- Price slider -->
+      <div class="form-group">
+        <label class="form-label">Price (₹) *</label>
+        <div class="range-wrap">
+          <input type="range" id="fPrice" min="500000" max="50000000" step="100000" value="5000000"
+                 oninput="updateRange('fPrice', 'priceVal', formatPrice)">
+          <div class="range-val">
+            <span>₹5 L</span><span>₹5 Cr</span>
+          </div>
+          <div class="range-current" id="priceVal">₹50 L</div>
+        </div>
+        <input type="hidden" id="fPriceHidden" value="5000000">
+      </div>
+
+      <!-- Area slider -->
+      <div class="form-group">
+        <label class="form-label">Built-up Area (sq.ft) *</label>
+        <div class="range-wrap">
+          <input type="range" id="fArea" min="200" max="10000" step="50" value="1000"
+                 oninput="updateRange('fArea', 'areaVal', v => v + ' sq.ft')">
+          <div class="range-val">
+            <span>200 sq.ft</span><span>10,000 sq.ft</span>
+          </div>
+          <div class="range-current" id="areaVal">1000 sq.ft</div>
+        </div>
+        <input type="hidden" id="fAreaHidden" value="1000">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Type *</label>
+          <select id="fType" class="form-select" required>
+            <option value="">Select Type</option>
+            <option>Apartment</option>
+            <option>House</option>
+            <option>Farm House</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Bedrooms *</label>
+          <select id="fBedrooms" class="form-select" required>
+            <option value="">Select</option>
+            <option>1</option><option>2</option><option>3</option>
+            <option>4</option><option>5</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Furnishing Status *</label>
+          <select id="fStatus" class="form-select" required>
+            <option value="">Select Status</option>
+            <option>Furnished</option>
+            <option>Semi-Furnished</option>
+            <option>Unfurnished</option>
+            <option>Under Construction</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Purpose *</label>
+          <select id="fPurpose" class="form-select" required>
+            <option value="">Select</option>
+            <option>Sell</option>
+            <option>Rent</option>
+          </select>
+        </div>
+      </div>
+
+      <p class="form-error" id="formError"></p>
+      <p class="form-success hidden" id="formSuccess">✅ Property listed successfully! Redirecting...</p>
+
+      <button type="submit" class="btn btn-primary" style="margin-top:1rem">
+        Submit Listing →
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Range Sliders ── */
+function formatPrice(val) {
+  val = parseInt(val);
+  if (val >= 10000000) return `₹${(val/10000000).toFixed(1)} Cr`;
+  if (val >= 100000)   return `₹${(val/100000).toFixed(0)} L`;
+  return `₹${val.toLocaleString()}`;
+}
+
+function updateRange(inputId, displayId, formatter) {
+  const input   = document.getElementById(inputId);
+  const display = document.getElementById(displayId);
+  const val     = input.value;
+
+  display.textContent = formatter(val);
+
+  // Update gradient
+  const pct = ((val - input.min) / (input.max - input.min)) * 100;
+  input.style.background = `linear-gradient(to right, var(--gold) ${pct}%, var(--gray-200) ${pct}%)`;
+
+  // Update hidden input
+  const hidden = document.getElementById(inputId + 'Hidden');
+  if (hidden) hidden.value = val;
+}
+
+// Init sliders on load
+window.addEventListener('load', () => {
+  updateRange('fPrice', 'priceVal', formatPrice);
+  updateRange('fArea', 'areaVal', v => v + ' sq.ft');
+});
+
+/* ── Form Submit ── */
+document.getElementById('listingForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errEl = document.getElementById('formError');
+  const sucEl = document.getElementById('formSuccess');
+
+  const data = {
+    society:  document.getElementById('fSociety').value,
+    address:  document.getElementById('fAddress').value,
+    city:     document.getElementById('fCity').value,
+    price:    document.getElementById('fPrice').value,
+    area:     document.getElementById('fArea').value,
+    type:     document.getElementById('fType').value,
+    bedrooms: document.getElementById('fBedrooms').value,
+    status:   document.getElementById('fStatus').value,
+    purpose:  document.getElementById('fPurpose').value,
+  };
+
+  if (!data.city || !data.type || !data.bedrooms || !data.status || !data.purpose) {
+    errEl.textContent = 'Please fill in all required fields.';
+    return;
+  }
+
+  try {
+    const res    = await fetch('/form', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const result = await res.json();
+    if (result.success) {
+      errEl.textContent = '';
+      sucEl.classList.remove('hidden');
+      showToast('Property listed successfully! 🎉', 'success');
+      setTimeout(() => {
+        window.location.href = data.purpose === 'Rent' ? '/tproperty' : '/bproperty';
+      }, 2000);
+    }
+  } catch {
+    errEl.textContent = 'Something went wrong. Please try again.';
+  }
+});
+</script>
+{% endblock %}

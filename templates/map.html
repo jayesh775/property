@@ -1,0 +1,578 @@
+{% extends "base.html" %}
+{% block title %}Price Map — ApnaGhar{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  .map-page {
+    margin-top: var(--navbar-h);
+    height: calc(100vh - var(--navbar-h));
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Top Bar ── */
+  .map-topbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 1.5rem;
+    background: var(--white);
+    border-bottom: 1px solid var(--gray-200);
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+  .map-topbar h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    color: var(--navy);
+    margin-right: 0.25rem;
+  }
+  .city-btn {
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    border: 2px solid var(--gray-200);
+    background: var(--white);
+    color: var(--gray-600);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .city-btn:hover  { border-color: var(--navy); color: var(--navy); }
+  .city-btn.active { background: var(--navy); border-color: var(--navy); color: white; }
+  .map-stat {
+    font-size: 0.8rem;
+    color: var(--gray-400);
+    background: var(--gray-100);
+    padding: 0.35rem 0.8rem;
+    border-radius: 15px;
+  }
+  .map-stat b { color: var(--navy); }
+  .area-wrap { margin-left: auto; display: flex; align-items: center; gap: 0.5rem; }
+  .area-wrap label { font-size: 0.8rem; color: var(--gray-400); font-weight: 600; white-space: nowrap; }
+  #areaSelect {
+    padding: 0.4rem 0.8rem;
+    border: 2px solid var(--gray-200);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    min-width: 200px;
+    outline: none;
+    cursor: pointer;
+    background: var(--white);
+    color: var(--text-dark);
+    font-family: inherit;
+  }
+  #areaSelect:focus { border-color: var(--gold); }
+
+  /* ── Map + Sidebar ── */
+  .map-body { display: flex; flex: 1; overflow: hidden; position: relative; }
+
+  /* Loader — sits over the whole map-body */
+  #loader {
+    position: absolute;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(250,247,242,0.88);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--navy);
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  #loader.hide { opacity: 0; pointer-events: none; }
+  .spin {
+    width: 36px; height: 36px;
+    border: 3px solid var(--gray-200);
+    border-top-color: var(--navy);
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #map { flex: 1; z-index: 1; }
+
+  /* ── Sidebar ── */
+  .map-sidebar {
+    width: 265px;
+    flex-shrink: 0;
+    background: var(--white);
+    border-left: 1px solid var(--gray-200);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 2;
+  }
+  .sb-head {
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid var(--gray-200);
+  }
+  .sb-head h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95rem;
+    color: var(--navy);
+    margin-bottom: 0.2rem;
+  }
+  .sb-head p { font-size: 0.78rem; color: var(--gray-400); }
+
+  .legend { padding: 0.5rem 0; border-bottom: 1px solid var(--gray-200); }
+  .leg-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.28rem 1rem; font-size: 0.78rem; color: var(--text-mid); }
+  .leg-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+  .area-list { flex: 1; overflow-y: auto; }
+  .area-list::-webkit-scrollbar { width: 4px; }
+  .area-list::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; }
+  .area-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.42rem 1rem; cursor: pointer; gap: 0.5rem;
+    transition: background 0.15s;
+  }
+  .area-row:hover { background: var(--gray-100); }
+  .area-row.active { background: rgba(201,150,62,0.1); border-left: 3px solid var(--gold); padding-left: calc(1rem - 3px); }
+  .a-dot  { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .a-name { font-size: 0.79rem; color: var(--text-mid); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .a-price{ font-size: 0.78rem; font-weight: 700; color: var(--navy); white-space: nowrap; }
+  body.dark .a-price { color: var(--gold); }
+
+  /* Price marker */
+  .mlabel {
+    background: white;
+    border: 2px solid #aaa;
+    border-radius: 5px;
+    padding: 2px 5px;
+    font-size: 10px;
+    font-weight: 700;
+    font-family: 'DM Sans', sans-serif;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.18);
+    white-space: nowrap;
+    cursor: pointer;
+    line-height: 1.5;
+  }
+  .mlabel small {
+    display: block;
+    font-size: 8px;
+    font-weight: 400;
+    color: #666;
+  }
+
+  @media (max-width: 800px)  { .map-sidebar { display: none; } }
+  @media (max-width: 560px)  {
+    .map-stat { display: none; }
+    #areaSelect { min-width: 130px; }
+    .city-btn { padding: 0.32rem 0.6rem; font-size: 0.78rem; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="map-page">
+
+  <!-- Top Bar -->
+  <div class="map-topbar">
+    <h2>🗺️ Price Map</h2>
+    <button class="city-btn active" data-city="Delhi">🏛 Delhi</button>
+    <button class="city-btn" data-city="Gurugram">🏢 Gurugram</button>
+    <button class="city-btn" data-city="Noida">🌆 Noida</button>
+    <button class="city-btn" data-city="Mumbai">🌊 Mumbai</button>
+    <span class="map-stat">📍 <b id="statCount">—</b> areas</span>
+    <span class="map-stat">Avg: <b id="statAvg">—</b>/sq.ft</span>
+    <div class="area-wrap">
+      <label for="areaSelect">Jump to:</label>
+      <select id="areaSelect">
+        <option value="">— Select a city —</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Map body -->
+  <div class="map-body">
+
+    <!-- Loader (over map-body, not inside #map) -->
+    <div id="loader">
+      <div class="spin"></div>
+      Loading map data...
+    </div>
+
+    <!-- Leaflet map -->
+    <div id="map"></div>
+
+    <!-- Sidebar -->
+    <aside class="map-sidebar">
+      <div class="sb-head">
+        <h3>Price Guide</h3>
+        <p id="sbCity">Select a city</p>
+      </div>
+      <div class="legend">
+        <div class="leg-row"><div class="leg-dot" style="background:#27ae60;"></div>Budget</div>
+        <div class="leg-row"><div class="leg-dot" style="background:#2ecc71;"></div>Affordable</div>
+        <div class="leg-row"><div class="leg-dot" style="background:#f1c40f;"></div>Mid-Range</div>
+        <div class="leg-row"><div class="leg-dot" style="background:#e67e22;"></div>Premium</div>
+        <div class="leg-row"><div class="leg-dot" style="background:#e74c3c;"></div>Luxury</div>
+        <div class="leg-row"><div class="leg-dot" style="background:#8e44ad;"></div>Ultra Luxury</div>
+      </div>
+      <div class="area-list" id="areaList">
+        <div style="padding:2rem;text-align:center;color:var(--gray-400);font-size:0.85rem;">
+          Select a city to see prices
+        </div>
+      </div>
+    </aside>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+
+/* ── Constants ── */
+const CITIES = {
+  Delhi:    { lat:28.6139, lng:77.2090, zoom:11 },
+  Gurugram: { lat:28.4595, lng:77.0266, zoom:12 },
+  Noida:    { lat:28.5355, lng:77.3910, zoom:12 },
+  Mumbai:   { lat:19.0760, lng:72.8777, zoom:11 },
+};
+
+const COLORS = ['#27ae60','#2ecc71','#f1c40f','#e67e22','#e74c3c','#8e44ad'];
+const TNAMES = ['Budget','Affordable','Mid-Range','Premium','Luxury','Ultra Luxury'];
+
+/* Curated coordinates for named areas */
+const KNOWN = {
+  'Connaught Place (CP)':[28.6315,77.2167],'Karol Bagh':[28.6518,77.1901],
+  'Paharganj':[28.6444,77.2148],'Daryaganj':[28.6397,77.2395],
+  'Chandni Chowk':[28.6506,77.2334],'Rajiv Chowk':[28.6328,77.2197],
+  'Jhandewalan':[28.6468,77.2023],'Model Town':[28.7098,77.1920],
+  'Civil Lines':[28.6773,77.2189],'Kamla Nagar':[28.6786,77.2078],
+  'Mukherjee Nagar':[28.7026,77.2046],'Burari':[28.7522,77.2085],
+  'GTB Nagar':[28.6957,77.2064],'Saket':[28.5235,77.2148],
+  'Hauz Khas':[28.5494,77.2001],'Greater Kailash (GK 1 & 2)':[28.5436,77.2380],
+  'Vasant Kunj':[28.5206,77.1589],'Defence Colony':[28.5742,77.2310],
+  'Lajpat Nagar':[28.5675,77.2434],'Malviya Nagar':[28.5304,77.2104],
+  'Mehrauli':[28.5197,77.1836],'Nehru Place':[28.5487,77.2512],
+  'Kalkaji':[28.5388,77.2526],'Govindpuri':[28.5291,77.2537],
+  'Okhla':[28.5350,77.2724],'Jamia Nagar':[28.5606,77.2919],
+  'New Friends Colony':[28.5669,77.2726],'Dwarka (sectors 1-23)':[28.5921,77.0460],
+  'Najafgarh':[28.6094,76.9799],'Vasant Vihar':[28.5637,77.1636],
+  'Palam':[28.5933,77.0877],'Kapashera':[28.6072,77.0607],
+  'Rajouri Garden':[28.6459,77.1186],'Punjabi Bagh':[28.6660,77.1313],
+  'Janakpuri':[28.6270,77.0862],'Tilak Nagar':[28.6389,77.1024],
+  'Paschim Vihar':[28.6694,77.0955],'Uttam Nagar':[28.6186,77.0581],
+  'Rohini (sectors 1-34)':[28.7367,77.1073],'Pitampura':[28.7053,77.1310],
+  'Shalimar Bagh':[28.7176,77.1671],'Ashok Vihar':[28.6904,77.1762],
+  'Bawana':[28.7899,77.0334],'Seelampur':[28.6716,77.2819],
+  'Shahdara':[28.6712,77.2876],'Yamuna Vihar':[28.6944,77.2771],
+  'Bhajanpura':[28.7043,77.2754],'Gokulpuri':[28.6900,77.2960],
+  'Laxmi Nagar':[28.6384,77.2825],'Preet Vihar':[28.6434,77.2966],
+  'Mayur Vihar (Phase 1, 2, 3)':[28.6097,77.2951],'Patparganj':[28.6259,77.2917],
+  'Trilokpuri':[28.6173,77.3073],'Krishna Nagar':[28.6540,77.2923],
+  'Vivek Vihar':[28.6673,77.3177],'Anand Vihar':[28.6464,77.3156],
+  'Dilshad Garden':[28.6843,77.3190],'Chanakyapuri':[28.5931,77.1869],
+  'Rashtrapati Bhavan area':[28.6143,77.1993],'India Gate':[28.6129,77.2295],
+  'Lodhi Colony':[28.5888,77.2248],'Sarojini Nagar':[28.5774,77.1954],
+  'DLF Phase 1':[28.4769,77.0929],'DLF Phase 2':[28.4726,77.0820],
+  'DLF Phase 3':[28.4822,77.0749],'DLF Phase 4':[28.4637,77.0739],
+  'DLF Phase 5':[28.4428,77.0607],
+  'Colaba':[18.9067,72.8147],'Cuffe Parade':[18.9132,72.8189],
+  'Fort':[18.9322,72.8352],'Churchgate':[18.9351,72.8271],
+  'Marine Lines':[18.9431,72.8237],'Charni Road':[18.9546,72.8189],
+  'Girgaon':[18.9601,72.8178],'Malabar Hill':[18.9541,72.7949],
+  'Walkeshwar':[18.9527,72.7962],'Tardeo':[18.9695,72.8129],
+  'Byculla':[18.9706,72.8354],'Mazgaon':[18.9625,72.8467],
+  'Parel':[18.9944,72.8398],'Lower Parel':[18.9967,72.8252],
+  'Worli':[19.0176,72.8177],'Prabhadevi':[19.0133,72.8266],
+  'Bandra':[19.0596,72.8295],'Bandra (East & West)':[19.0545,72.8405],
+  'Khar':[19.0719,72.8362],'Santacruz':[19.0822,72.8401],
+  'Vile Parle':[19.0990,72.8478],'Andheri':[19.1197,72.8468],
+  'Andheri (East & West)':[19.1197,72.8558],'Jogeshwari':[19.1401,72.8497],
+  'Goregaon':[19.1614,72.8497],'Malad':[19.1863,72.8488],
+  'Kandivali':[19.2051,72.8517],'Borivali':[19.2315,72.8566],
+  'Dahisar':[19.2611,72.8540],'Kurla':[19.0726,72.8813],
+  'Ghatkopar':[19.0867,72.9081],'Chembur':[19.0600,72.8994],
+  'Vidyavihar':[19.0837,72.8862],'Kanjurmarg':[19.1281,72.9134],
+  'Bhandup':[19.1526,72.9420],'Mulund':[19.1728,72.9537],
+  'Wadala':[19.0180,72.8567],'Sewri':[18.9942,72.8569],
+  'Mankhurd':[19.0416,72.9222],'Govandi':[19.0540,72.9300],
+  'Trombay':[19.0497,72.9402],'Vashi':[19.0762,72.9983],
+  'Nerul':[19.0338,73.0162],'Belapur':[19.0178,73.0350],
+  'Kharghar':[19.0476,73.0697],'Airoli':[19.1574,72.9988],
+  'Ghansoli':[19.1215,72.9936],'Koparkhairane':[19.1038,73.0048],
+  'Mira Road':[19.2818,72.8687],'Bhayandar':[19.3046,72.8520],
+  'Naigaon':[19.3607,72.8502],'Vasai':[19.3727,72.8353],
+  'Virar':[19.4612,72.8139],'Bandra-Kurla Complex (BKC)':[19.0665,72.8672],
+  'Nariman Point':[18.9252,72.8242],'SEEPZ (Andheri)':[19.1211,72.8585],
+  'MIDC (industrial zones)':[19.1050,72.8650],
+};
+
+/* ── State ── */
+let map, markerLayer, currentCity = 'Delhi';
+
+/* ── 1. Init map (runs once on page load) ── */
+function initMap() {
+  map = L.map('map').setView(
+    [CITIES.Delhi.lat, CITIES.Delhi.lng],
+    CITIES.Delhi.zoom
+  );
+
+  /* OpenStreetMap tiles */
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+    maxZoom: 18,
+  }).addTo(map);
+
+  /* Empty layer group for markers */
+  markerLayer = L.layerGroup().addTo(map);
+
+  /* Hide loader as soon as tiles start loading */
+  map.once('load', hideLoader);
+
+  /* Fallback: always hide loader after 2s */
+  setTimeout(hideLoader, 2000);
+
+  /* Load Delhi data immediately */
+  loadCity('Delhi');
+}
+
+/* ── 2. Load city data from Flask API ── */
+async function loadCity(cityName) {
+  currentCity = cityName;
+  showLoader();
+
+  /* Move map to city */
+  const c = CITIES[cityName];
+  map.setView([c.lat, c.lng], c.zoom);
+
+  try {
+    const res   = await fetch('/api/area_prices?city=' + encodeURIComponent(cityName));
+    const json  = await res.json();
+    const areas = json.areas;   /* [{area, price}, ...] */
+
+    if (!areas || areas.length === 0) {
+      alert('No data found for ' + cityName + '. Check AreaAvgPrice table.');
+      hideLoader();
+      return;
+    }
+
+    /* Calculate min/max for color tiers */
+    const prices = areas.map(a => a.price);
+    const min    = Math.min(...prices);
+    const max    = Math.max(...prices);
+    const avg    = Math.round(prices.reduce((s,p) => s+p, 0) / prices.length);
+
+    /* Update top bar stats */
+    document.getElementById('statCount').textContent = areas.length;
+    document.getElementById('statAvg').textContent   = '₹' + fmtNum(avg);
+    document.getElementById('sbCity').textContent    = cityName + ' — ₹/sq.ft';
+
+    /* Render everything */
+    drawMarkers(areas, min, max);
+    fillDropdown(areas);
+    fillSidebar(areas, min, max);
+
+  } catch (err) {
+    alert('Error loading data: ' + err.message);
+    console.error(err);
+  }
+
+  /* Always hide loader after data loads */
+  hideLoader();
+}
+
+/* ── 3. Draw price markers on map ── */
+function drawMarkers(areas, min, max) {
+  markerLayer.clearLayers();
+
+  areas.forEach((a, idx) => {
+    const latlng = getLatLng(a.area, idx, areas.length);
+    const color  = tierColor(a.price, min, max);
+
+    /* Custom HTML label icon */
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="mlabel" style="border-color:${color};">
+               <small>${a.area}</small>
+               <span style="color:${color};">₹${fmtNum(a.price)}</span>
+             </div>`,
+      iconAnchor: [0, 0],
+    });
+
+    const marker = L.marker(latlng, { icon });
+
+    /* Popup on click */
+    marker.bindPopup(
+      `<b style="font-size:0.95rem;">${a.area}</b><br>
+       <span style="font-size:1.05rem;font-weight:800;color:${color};">
+         ₹${a.price.toLocaleString()}/sq.ft
+       </span><br>
+       <small style="color:#888;">${currentCity} &middot; ${tierName(a.price, min, max)}</small>`,
+      { maxWidth: 210 }
+    );
+
+    /* Store name for jumpTo */
+    marker._areaName = a.area;
+    markerLayer.addLayer(marker);
+  });
+}
+
+/* ── 4. Fill area dropdown ── */
+function fillDropdown(areas) {
+  const sel = document.getElementById('areaSelect');
+  sel.innerHTML = '<option value="">— All Areas —</option>';
+
+  /* Sort alphabetically */
+  [...areas]
+    .sort((a, b) => a.area.localeCompare(b.area))
+    .forEach(a => {
+      const opt = document.createElement('option');
+      opt.value       = a.area;
+      opt.textContent = a.area + '  —  ₹' + a.price.toLocaleString();
+      sel.appendChild(opt);
+    });
+}
+
+/* ── 5. Fill sidebar list (sorted highest → lowest price) ── */
+function fillSidebar(areas, min, max) {
+  const list = document.getElementById('areaList');
+
+  list.innerHTML = [...areas]
+    .sort((a, b) => b.price - a.price)
+    .map(a => {
+      const color = tierColor(a.price, min, max);
+      /* Use data-area attr; escape quotes for safety */
+      return `
+        <div class="area-row" data-area="${a.area.replace(/"/g,'&quot;')}"
+             onclick="jumpTo(this.dataset.area)">
+          <div class="a-dot" style="background:${color};"></div>
+          <span class="a-name" title="${a.area}">${a.area}</span>
+          <span class="a-price">₹${fmtNum(a.price)}</span>
+        </div>`;
+    })
+    .join('');
+}
+
+/* ── 6. Jump to a specific area ── */
+function jumpTo(areaName) {
+  /* Find marker */
+  let found = null;
+  markerLayer.eachLayer(m => {
+    if (m._areaName === areaName) found = m;
+  });
+
+  if (!found) return;
+
+  /* Fly map to marker */
+  map.setView(found.getLatLng(), 15);
+  found.openPopup();
+
+  /* Highlight sidebar row */
+  document.querySelectorAll('.area-row').forEach(row => {
+    row.classList.toggle('active', row.dataset.area === areaName);
+    if (row.dataset.area === areaName) {
+      row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  });
+
+  /* Sync dropdown */
+  document.getElementById('areaSelect').value = areaName;
+}
+
+/* ── Helper: get lat/lng for an area name ── */
+function getLatLng(name, idx, total) {
+  /* 1. Use known curated coordinate */
+  if (KNOWN[name]) return KNOWN[name];
+
+  /* 2. For Sector-based areas, compute grid position */
+  const m = name.match(/Sector\s+(\d+)/i);
+  if (m) {
+    const n = parseInt(m[1]);
+    if (currentCity === 'Noida') {
+      return [
+        28.62 - (n / 168) * 0.18 + jitter(name, 0.003),
+        77.34 + (n % 20)  * 0.01  + jitter(name + 'x', 0.003),
+      ];
+    }
+    if (currentCity === 'Gurugram') {
+      return [
+        28.50 - (n / 114) * 0.12 + jitter(name, 0.003),
+        76.98 + (n % 15)  * 0.009 + jitter(name + 'y', 0.003),
+      ];
+    }
+  }
+
+  /* 3. Fallback: spread around city center using hash */
+  const c = CITIES[currentCity];
+  const h = strHash(name);
+  const r = 0.04 + (h % 50) / 1000;
+  const a = (h % 360) * (Math.PI / 180);
+  return [c.lat + r * Math.sin(a), c.lng + r * Math.cos(a)];
+}
+
+/* ── Helper: color by price tier ── */
+function tierColor(price, min, max) {
+  return COLORS[tierIdx(price, min, max)];
+}
+function tierName(price, min, max) {
+  return TNAMES[tierIdx(price, min, max)];
+}
+function tierIdx(price, min, max) {
+  const range = max - min || 1;
+  return Math.min(Math.floor(((price - min) / range) * 6), 5);
+}
+
+/* ── Helper: format number short ── */
+function fmtNum(v) {
+  if (v >= 100000) return (v / 100000).toFixed(1) + 'L';
+  if (v >= 1000)   return (v / 1000).toFixed(0) + 'K';
+  return String(v);
+}
+
+/* ── Helper: deterministic jitter so same area always at same spot ── */
+function jitter(str, scale) {
+  return ((strHash(str) % 100) / 100 - 0.5) * scale;
+}
+function strHash(str) {
+  let h = 0;
+  for (const ch of str) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return h;
+}
+
+/* ── Loader helpers ── */
+function showLoader() { document.getElementById('loader').classList.remove('hide'); }
+function hideLoader() { document.getElementById('loader').classList.add('hide'); }
+
+/* ══════════════════════════════
+   Event listeners
+   ══════════════════════════════ */
+
+/* City buttons */
+document.querySelectorAll('.city-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.city-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('areaSelect').value = '';
+    document.querySelectorAll('.area-row').forEach(r => r.classList.remove('active'));
+    loadCity(btn.dataset.city);
+  });
+});
+
+/* Area dropdown */
+document.getElementById('areaSelect').addEventListener('change', function () {
+  if (this.value) {
+    jumpTo(this.value);
+  } else {
+    /* Reset to city view */
+    const c = CITIES[currentCity];
+    map.setView([c.lat, c.lng], c.zoom);
+    document.querySelectorAll('.area-row').forEach(r => r.classList.remove('active'));
+  }
+});
+
+/* ── Boot ── */
+initMap();
+</script>
+{% endblock %}

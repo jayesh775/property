@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}ApnaGhar — Find Your Perfect Home{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+<!--
+     NAVBAR (Fixed, shared across all pages)
+-->
+<nav class="navbar">
+
+  <!-- Brand -->
+  <a href="/" class="nav-brand">
+    <span class="nav-brand-icon">🏠</span>
+    Apna<span>Ghar</span>
+  </a>
+
+  <!-- Hamburger (mobile) -->
+  <button class="hamburger" id="hamburger" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+
+  <!-- Nav Links -->
+  <ul class="nav-links" id="navLinks">
+
+    <!-- For Buyers -->
+    <li class="nav-item">
+      <a class="nav-link" href="#">
+        🏢 For Buyers <span class="arrow">▾</span>
+      </a>
+      <div class="dropdown">
+        <a href="/map"><span class="icon">🗺️</span> Checkout in Map</a>
+        <a href="/bproperty"><span class="icon">🔍</span> Checkout Property</a>
+      </div>
+    </li>
+
+    <!-- For Tenants -->
+    <li class="nav-item">
+      <a class="nav-link" href="#">
+        🏡 For Tenants <span class="arrow">▾</span>
+      </a>
+      <div class="dropdown">
+        <a href="/tproperty"><span class="icon">🔍</span> Checkout Property</a>
+        <a href="/flatmate"><span class="icon">🤝</span> Find Flatmate</a>
+      </div>
+    </li>
+
+    <!-- For Sellers -->
+    <li class="nav-item">
+      <a class="nav-link" href="#">
+        💰 For Sellers <span class="arrow">▾</span>
+      </a>
+      <div class="dropdown">
+        <a href="/form"><span class="icon">📊</span> Checkout Property Price</a>
+        <a href="/form"><span class="icon">📝</span> List Down Property</a>
+      </div>
+    </li>
+
+  </ul>
+
+  <!-- Search -->
+  <div class="nav-search">
+    <input type="text" id="searchInput" class="search-input" placeholder="Search city...">
+    <span class="search-icon">🔍</span>
+  </div>
+
+  <!-- Theme toggle -->
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">🌙</button>
+
+  <!-- Profile -->
+  <div class="nav-profile">
+    <button class="profile-btn" aria-label="Profile">
+      {% if user %}
+        {{ user.name[0].upper() }}
+      {% else %}
+        👤
+      {% endif %}
+    </button>
+
+    <div class="profile-dropdown">
+      {% if user %}
+        <!-- Logged in -->
+        <div class="profile-header">
+          <div class="profile-name">{{ user.name }} {{ user.surname }}</div>
+          <div class="profile-email">{{ user.email }}</div>
+        </div>
+        <button id="viewProfileBtn">👤 View Profile</button>
+        <button id="shortlistedBtn">❤️ Shortlisted</button>
+        <button id="logoutBtn" class="logout-btn">🚪 Logout</button>
+      {% else %}
+        <!-- Not logged in -->
+        <a href="#" data-open-login>🔑 Login</a>
+        <a href="#" data-open-signup>✨ Sign Up</a>
+      {% endif %}
+    </div>
+  </div>
+
+</nav>
+
+<!-- Page Content -->
+{% block content %}{% endblock %}
+
+<!--
+     LOGIN MODAL
+-->
+<div class="modal-overlay" id="loginModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Welcome Back 👋</h2>
+      <button class="modal-close">✕</button>
+    </div>
+    <form id="loginForm">
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" id="loginEmail" class="form-input" placeholder="you@example.com" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="loginPassword" class="form-input" placeholder="Your password" required>
+      </div>
+      <p class="form-error" id="loginError"></p>
+      <button type="submit" class="btn btn-primary" style="margin-top:0.75rem">Login →</button>
+    </form>
+    <p class="modal-switch">
+      Don't have an account? <span onclick="switchToSignup()">Sign Up</span>
+    </p>
+  </div>
+</div>
+
+<!--
+     SIGNUP MODAL
+-->
+<div class="modal-overlay" id="signupModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Create Account ✨</h2>
+      <button class="modal-close">✕</button>
+    </div>
+    <form id="signupForm">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">First Name</label>
+          <input type="text" id="signupName" class="form-input" placeholder="Rahul" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Last Name</label>
+          <input type="text" id="signupSurname" class="form-input" placeholder="Sharma" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Gender</label>
+          <select id="signupGender" class="form-select" required>
+            <option value="">Select</option>
+            <option>Male</option><option>Female</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Age</label>
+          <input type="number" id="signupAge" class="form-input" placeholder="25" min="18" max="100" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Current Address</label>
+        <input type="text" id="signupAddress" class="form-input" placeholder="Your city, state" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" id="signupEmail" class="form-input" placeholder="you@example.com" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="signupPassword" class="form-input" placeholder="Min. 6 characters" required minlength="6">
+      </div>
+      <p class="form-error" id="signupError"></p>
+      <button type="submit" class="btn btn-primary" style="margin-top:0.75rem">Create Account →</button>
+    </form>
+    <p class="modal-switch">
+      Already have an account? <span onclick="switchToLogin()">Login</span>
+    </p>
+  </div>
+</div>
+
+<!--
+     PROFILE MODAL
+-->
+{% if user %}
+<div class="modal-overlay" id="profileModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">My Profile 👤</h2>
+      <button class="modal-close">✕</button>
+    </div>
+    <div style="text-align:center; margin-bottom:1.5rem;">
+      <div style="width:72px;height:72px;border-radius:50%;background:var(--navy);color:white;font-size:1.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 0.75rem;">
+        {{ user.name[0].upper() }}
+      </div>
+      <h3 id="profileName" style="font-family:'Playfair Display',serif;color:var(--navy);font-size:1.2rem;"></h3>
+      <p id="profileEmail" style="color:var(--gray-400);font-size:0.85rem;"></p>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+      <div style="background:var(--gray-100);padding:1rem;border-radius:var(--radius-sm);">
+        <div style="font-size:0.75rem;color:var(--gray-400);margin-bottom:0.25rem;">GENDER</div>
+        <div id="profileGender" style="font-weight:600;color:var(--navy);"></div>
+      </div>
+      <div style="background:var(--gray-100);padding:1rem;border-radius:var(--radius-sm);">
+        <div style="font-size:0.75rem;color:var(--gray-400);margin-bottom:0.25rem;">AGE</div>
+        <div id="profileAge" style="font-weight:600;color:var(--navy);"></div>
+      </div>
+    </div>
+    <div style="background:var(--gray-100);padding:1rem;border-radius:var(--radius-sm);margin-top:1rem;">
+      <div style="font-size:0.75rem;color:var(--gray-400);margin-bottom:0.25rem;">ADDRESS</div>
+      <div id="profileAddress" style="font-weight:500;color:var(--navy);font-size:0.9rem;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SHORTLISTED MODAL -->
+<div class="modal-overlay" id="shortlistedModal">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-header">
+      <h2 class="modal-title">My Shortlist ❤️</h2>
+      <button class="modal-close">✕</button>
+    </div>
+    <div id="shortlistedList" class="property-grid" style="max-height:60vh;overflow-y:auto;"></div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Scripts -->
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

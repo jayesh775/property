@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+{% block title %}ApnaGhar — Find Your Perfect Home{% endblock %}
+
+{% block content %}
+
+<!--
+     HERO SLIDESHOW
+-->
+<section class="hero">
+
+  <!-- Slide 1: Man with house keys -->
+  <div class="slide">
+    <img src="{{ url_for('static', filename='images/cover/cover1.png') }}" alt="Find your dream home">
+    <div class="slide-content">
+      <span class="slide-tag">Buy</span>
+      <h1 class="slide-title">Your Dream Home Awaits</h1>
+      <p class="slide-sub">Browse premium properties across India's top cities</p>
+      <a href="/bproperty" class="slide-cta">Explore Properties →</a>
+    </div>
+  </div>
+
+  <!-- Slide 2: Flatmates -->
+  <div class="slide">
+    <img src="{{ url_for('static', filename='images/cover/cover2.png') }}" alt="Find a flatmate">
+    <div class="slide-content">
+      <span class="slide-tag">Flatmate</span>
+      <h1 class="slide-title">Find the Perfect Flatmate</h1>
+      <p class="slide-sub">Share your space, halve the rent</p>
+      <a href="/flatmate" class="slide-cta">Find Flatmate →</a>
+    </div>
+  </div>
+
+  <!-- Slide 3: Family -->
+  <div class="slide">
+    <img src="{{ url_for('static', filename='images/cover/cover3.png') }}" alt="Family home">
+    <div class="slide-content">
+      <span class="slide-tag">Family Homes</span>
+      <h1 class="slide-title">A Home for Every Family</h1>
+      <p class="slide-sub">Spacious apartments and houses designed for comfort</p>
+      <a href="/bproperty" class="slide-cta">Browse Now →</a>
+    </div>
+  </div>
+
+  <!-- Slide 4: Couple -->
+  <div class="slide">
+    <img src="{{ url_for('static', filename='images/cover/cover4.png') }}" alt="New home keys">
+    <div class="slide-content">
+      <span class="slide-tag">Rent</span>
+      <h1 class="slide-title">Start Your New Chapter</h1>
+      <p class="slide-sub">Quality rental homes across Delhi, Noida, Gurugram & Mumbai</p>
+      <a href="/tproperty" class="slide-cta">View Rentals →</a>
+    </div>
+  </div>
+
+  <!-- Indicators -->
+  <div class="slide-indicators">
+    <div class="indicator"></div>
+    <div class="indicator"></div>
+    <div class="indicator"></div>
+    <div class="indicator"></div>
+  </div>
+
+  <!-- Arrows -->
+  <button class="slide-arrow prev" id="slidePrev">‹</button>
+  <button class="slide-arrow next" id="slideNext">›</button>
+</section>
+
+<!-- 
+     EXPLORE PLACES SECTION
+-->
+<section class="explore-section">
+  <div class="section-header">
+    <span class="section-label">Top Cities</span>
+    <h2 class="section-title">Explore the Places</h2>
+    <p class="section-sub">Discover premium properties in India's most vibrant cities</p>
+  </div>
+
+  <div class="places-grid">
+
+    <!-- Delhi -->
+    <div class="place-card" onclick="window.location.href='/bproperty?city=Delhi'">
+      <div class="place-img-wrap">
+        <img src="{{ url_for('static', filename='images/Places/delhi.jpg') }}" alt="Delhi">
+      </div>
+      <div class="place-overlay">
+        <h3 class="place-name">DELHI</h3>
+        <p class="place-count">Properties Available</p>
+      </div>
+      <span class="place-arrow">→</span>
+    </div>
+
+    <!-- Gurugram -->
+    <div class="place-card" onclick="window.location.href='/bproperty?city=Gurugram'">
+      <div class="place-img-wrap">
+        <img src="{{ url_for('static', filename='images/Places/gurugram.jpg') }}" alt="Gurugram">
+      </div>
+      <div class="place-overlay">
+        <h3 class="place-name">GURUGRAM</h3>
+        <p class="place-count">Properties Available</p>
+      </div>
+      <span class="place-arrow">→</span>
+    </div>
+
+    <!-- Noida -->
+    <div class="place-card" onclick="window.location.href='/bproperty?city=Noida'">
+      <div class="place-img-wrap">
+        <img src="{{ url_for('static', filename='images/Places/nodia.jpg') }}" alt="Noida">
+      </div>
+      <div class="place-overlay">
+        <h3 class="place-name">NOIDA</h3>
+        <p class="place-count">Properties Available</p>
+      </div>
+      <span class="place-arrow">→</span>
+    </div>
+
+    <!-- Mumbai -->
+    <div class="place-card" onclick="window.location.href='/bproperty?city=Mumbai'">
+      <div class="place-img-wrap">
+        <img src="{{ url_for('static', filename='images/Places/mumbai.jpg') }}" alt="Mumbai">
+      </div>
+      <div class="place-overlay">
+        <h3 class="place-name">MUMBAI</h3>
+        <p class="place-count">Properties Available</p>
+      </div>
+      <span class="place-arrow">→</span>
+    </div>
+
+  </div>
+</section>
+
+<!--
+     APARTMENTS, HOUSE AND MORE SECTION
+-->
+<section class="type-section">
+  <div class="section-header" style="text-align:left;">
+    <span class="section-label">Browse by Type</span>
+    <h2 class="section-title">Apartments, House and More</h2>
+    <p class="section-sub" style="margin:0;">Find the property type that suits your lifestyle</p>
+  </div>
+
+  <div class="type-carousel-wrap" style="margin-top:2rem;">
+    <button class="carousel-btn prev" id="carouselPrev">‹</button>
+    <div class="type-carousel" id="typeCarousel">
+
+      <div class="type-card" onclick="window.location.href='/bproperty?type=Apartment'">
+        <div class="type-card-top">
+          <h3>🏢 Apartment</h3>
+          <p>Modern living spaces in prime locations</p>
+        </div>
+        <div class="type-card-img">
+          <img src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400&h=200&fit=crop" alt="Apartment">
+        </div>
+      </div>
+
+      <div class="type-card" onclick="window.location.href='/bproperty?type=House'">
+        <div class="type-card-top">
+          <h3>🏡 Independent House</h3>
+          <p>Spacious homes with your own space</p>
+        </div>
+        <div class="type-card-img">
+          <img src="https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=200&fit=crop" alt="House">
+        </div>
+      </div>
+
+      <div class="type-card" onclick="window.location.href='/bproperty?type=Farm+House'">
+        <div class="type-card-top">
+          <h3>🌾 Farm House</h3>
+          <p>Luxury escapes with open green spaces</p>
+        </div>
+        <div class="type-card-img">
+          <img src="https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400&h=200&fit=crop" alt="Farm House">
+        </div>
+      </div>
+
+      <div class="type-card" onclick="window.location.href='/tproperty'">
+        <div class="type-card-top">
+          <h3>🔑 Studio / 1RK</h3>
+          <p>Compact and affordable for solo living</p>
+        </div>
+        <div class="type-card-img">
+          <img src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400&h=200&fit=crop" alt="Studio">
+        </div>
+      </div>
+
+      <div class="type-card" onclick="window.location.href='/tproperty'">
+        <div class="type-card-top">
+          <h3>🏠 Rental Homes</h3>
+          <p>Furnished and ready-to-move options</p>
+        </div>
+        <div class="type-card-img">
+          <img src="https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=400&h=200&fit=crop" alt="Rental">
+        </div>
+      </div>
+
+    </div>
+    <button class="carousel-btn next" id="carouselNext">›</button>
+  </div>
+</section>
+
+<!-- 
+     END TO END SUPPORT SECTION
+-->
+<section class="support-section">
+  <div class="section-header">
+    <span class="section-label">Our Services</span>
+    <h2 class="section-title">End to End Support</h2>
+    <p class="section-sub">Your complete, hassle-free property journey, all in one place.</p>
+  </div>
+
+  <div class="support-inner">
+    <div class="support-grid">
+
+      <div class="support-card teal">
+        <div class="support-icon">👔</div>
+        <h4>Dedicated Manager</h4>
+        <p>Personalized guidance from search to possession for your property.</p>
+      </div>
+
+      <div class="support-card purple">
+        <div class="support-icon">📍</div>
+        <h4>Site Visits</h4>
+        <p>Scheduled tours for the best property for rent or sale options.</p>
+      </div>
+
+      <div class="support-card green">
+        <div class="support-icon">₹</div>
+        <h4>Home Loan</h4>
+        <p>Effortless financing support to simplify your property journey.</p>
+      </div>
+
+      <div class="support-card teal">
+        <div class="support-icon">📄</div>
+        <h4>Documentation</h4>
+        <p>Seamless paperwork support managed by our expert team.</p>
+      </div>
+
+      <div class="support-card teal">
+        <div class="support-icon">📋</div>
+        <h4>Registration</h4>
+        <p>Swift and secure registration process for your chosen property.</p>
+      </div>
+
+      <div class="support-card pink">
+        <div class="support-icon">🔄</div>
+        <h4>Society Transfer</h4>
+        <p>Smooth coordination for quick and clear society formalities.</p>
+      </div>
+
+    </div>
+
+    <div class="support-visual">
+      <img src="{{ url_for('static', filename='images/Places/CustomerRelation.png') }}"
+           alt="Support Illustration" style="max-width:400px; width:100%;">
+    </div>
+  </div>
+</section>
+
+<!--
+     WHY CHOOSE US SECTION
+-->
+<section class="why-section">
+  <div class="section-header">
+    <span class="section-label">Why ApnaGhar</span>
+    <h2 class="section-title">Why Choose Us</h2>
+    <p class="section-sub">We are your one-stop destination to safely buy, sell, or rent from luxury apartments to affordable homes.</p>
+  </div>
+
+  <div class="why-grid">
+
+    <div class="why-card">
+      <img src="https://cdn-icons-png.flaticon.com/256/3710/3710407.png" alt="Property Management" class="why-img">
+      <h3>Property Management</h3>
+      <p>End-to-end care for your property with professional managers</p>
+    </div>
+
+    <div class="why-card">
+      <img src="https://cdn-icons-png.flaticon.com/256/3135/3135715.png" alt="Resale Services" class="why-img">
+      <h3>Resale Services</h3>
+      <p>Sell your home quickly & smartly with our expert network</p>
+    </div>
+
+    <div class="why-card">
+      <img src="https://cdn-icons-png.flaticon.com/256/2830/2830284.png" alt="Loan Assistance" class="why-img">
+      <h3>Loan Assistance</h3>
+      <p>Home loans assistance made hassle-free with top banks</p>
+    </div>
+
+    <div class="why-card">
+      <img src="https://cdn-icons-png.flaticon.com/256/2454/2454283.png" alt="Rental Services" class="why-img">
+      <h3>Rental Services</h3>
+      <p>Find tenants or rental homes fast with verified listings</p>
+    </div>
+
+    <div class="why-card">
+      <img src="https://cdn-icons-png.flaticon.com/256/3176/3176366.png" alt="NRI Services" class="why-img">
+      <h3>NRI Property Management</h3>
+      <p>Managing your property while you are abroad, seamlessly</p>
+    </div>
+
+    <div class="why-card">
+      <img src="https://cdn-icons-png.flaticon.com/256/3135/3135791.png" alt="Legal Documentation" class="why-img">
+      <h3>Legal Documentation</h3>
+      <p>Rental agreement and police verification handled by experts</p>
+    </div>
+
+  </div>
+</section>
+
+<!--
+     FOOTER
+-->
+<footer class="footer">
+  <div class="footer-top">
+    <div>
+      <div class="footer-brand">Apna<span>Ghar</span></div>
+      <p class="footer-desc">India's trusted property platform. Find your perfect home in Delhi, Noida, Gurugram and Mumbai.</p>
+      <div class="footer-social">
+        <a class="social-btn" href="#">f</a>
+        <a class="social-btn" href="#">in</a>
+        <a class="social-btn" href="#">𝕏</a>
+        <a class="social-btn" href="#">▶</a>
+      </div>
+    </div>
+    <div class="footer-col">
+      <h4>For Buyers</h4>
+      <ul>
+        <li><a href="/bproperty">Browse Properties</a></li>
+        <li><a href="/map">View on Map</a></li>
+        <li><a href="/price_recommend">Price Guide</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>For Tenants</h4>
+      <ul>
+        <li><a href="/tproperty">Rental Homes</a></li>
+        <li><a href="/flatmate">Find Flatmate</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>For Sellers</h4>
+      <ul>
+        <li><a href="/form">List Property</a></li>
+        <li><a href="/price_recommend">Price Estimate</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2026 ApnaGhar. All rights reserved.</span>
+    <span>Made with ❤️ in India</span>
+  </div>
+</footer>
+
+{% endblock %}

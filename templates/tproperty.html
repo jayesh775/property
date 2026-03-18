@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}Rental Properties — ApnaGhar{% endblock %}
+
+{% block content %}
+<div class="property-page page-enter">
+
+  <!-- ── Left Filter Sidebar ── -->
+  <aside class="filter-sidebar">
+    <h2>🔧 Filters</h2>
+    <form id="filterForm" method="GET" action="/tproperty">
+
+      <!-- Budget -->
+      <div class="filter-section">
+        <div class="filter-label">Budget (₹/month)</div>
+        <div class="price-range">
+          <input type="number" name="min_price" class="price-input"
+                 placeholder="Min" value="{{ min_price if min_price else '' }}">
+          <span style="color:var(--gray-400);">—</span>
+          <input type="number" name="max_price" class="price-input"
+                 placeholder="Max" value="{{ max_price if max_price else '' }}">
+        </div>
+      </div>
+
+      <!-- City — checkboxes, auto-submit on change -->
+      <div class="filter-section">
+        <div class="filter-label">City</div>
+        {% for c in ['Delhi', 'Noida', 'Gurugram', 'Mumbai'] %}
+        <label class="filter-option">
+          <input type="checkbox" name="city" value="{{ c }}"
+                 {% if c in selected_cities %}checked{% endif %}
+                 onchange="document.getElementById('filterForm').submit()">
+          {{ c }}
+        </label>
+        {% endfor %}
+      </div>
+
+      <!-- Type — single select -->
+      <div class="filter-section">
+        <div class="filter-label">Type of Property</div>
+        <select name="type" class="form-select"
+                style="font-size:0.82rem;padding:0.5rem;"
+                onchange="document.getElementById('filterForm').submit()">
+          <option value="">All Types</option>
+          {% for t in types %}
+          <option value="{{ t }}" {% if t == selected_type %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Bedrooms — radio, auto-submit on change -->
+      <div class="filter-section">
+        <div class="filter-label">No. of Bedrooms</div>
+        {% for b in [1, 2, 3, 4, 5] %}
+        <label class="filter-option">
+          <input type="radio" name="bedrooms" value="{{ b }}"
+                 {% if b|string == selected_bedrooms %}checked{% endif %}
+                 onchange="document.getElementById('filterForm').submit()">
+          {{ b }} BHK
+        </label>
+        {% endfor %}
+      </div>
+
+      <!-- Status — checkboxes, auto-submit on change -->
+      <div class="filter-section">
+        <div class="filter-label">Construction Status</div>
+        {% for s in statuses %}
+        <label class="filter-option">
+          <input type="checkbox" name="status" value="{{ s }}"
+                 {% if s in selected_statuses %}checked{% endif %}
+                 onchange="document.getElementById('filterForm').submit()">
+          {{ s }}
+        </label>
+        {% endfor %}
+      </div>
+
+      <button type="submit" class="filter-apply">Apply Filters</button>
+      <button type="button" class="filter-reset"
+              onclick="window.location.href='/tproperty'">Reset All</button>
+    </form>
+  </aside>
+
+  <!-- ── Right Property Listings ── -->
+  <main class="property-main">
+    <div class="property-main-header">
+      <div>
+        <h1>Properties for Rent</h1>
+        <p class="result-count">{{ properties|length }} properties found</p>
+      </div>
+    </div>
+
+    {% if properties %}
+    <div class="property-grid">
+      {% for p in properties %}
+      <div class="property-card" style="animation-delay: {{ loop.index0 * 0.08 }}s">
+        <div class="property-card-img">
+          <img src="{{ url_for('static', filename='images/house/pic1.jpg') }}"
+               alt="{{ p.Society }}"
+               onerror="this.src='https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=400&h=200&fit=crop'">
+          <span class="property-badge rent">For Rent</span>
+          <button class="shortlist-btn" data-id="{{ p.propertyID }}" title="Shortlist">🤍</button>
+        </div>
+        <div class="property-card-body">
+          <div class="property-society">{{ p.Society }}</div>
+          <div class="property-address">{{ p.Address }}</div>
+          <div class="property-price">
+            {{ p.formatted_price }}
+            <span style="font-size:0.7rem;font-weight:400;color:var(--gray-400);"> /mo</span>
+          </div>
+          <div class="property-area">📐 {{ p.Area }} sq.ft</div>
+          <div class="property-tags">
+            <span class="property-tag">🏠 {{ p.Type }}</span>
+            <span class="property-tag">🛏 {{ p.Bedrooms }} BHK</span>
+            <span class="property-tag">🏗 {{ p.Status }}</span>
+          </div>
+          <button class="connect-btn" onclick="handleConnect('{{ p.Society }}')">Connect →</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="no-results">
+      <div class="icon">🏚️</div>
+      <h3>No rental properties found</h3>
+      <p>Try adjusting your filters to see more results</p>
+    </div>
+    {% endif %}
+  </main>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function handleConnect(society) {
+  {% if user %}
+    showToast(`Connecting you to ${society}... 📞`, 'success');
+  {% else %}
+    showToast('Please login to connect with owners', 'error');
+    openModal(document.getElementById('loginModal'));
+  {% endif %}
+}
+</script>
+{% endblock %}

@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aashiyana – Find Your Dream Home in Gurugram</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <!-- Navbar injected by main.js -->
+
+  <div class="page-body">
+
+    <!-- ══════════════════════════════════
+         1. HERO CAROUSEL
+    ══════════════════════════════════ -->
+    <section class="hero-carousel" id="hero">
+      <!-- Each slide uses cover images from static/images -->
+      <div class="hero-slide active">
+        <img src="/static/images/cover1.png" alt="Cover 1">
+        <div class="hero-overlay">
+          <div class="hero-text">
+            <h1>Find Your Perfect<br>Home in Gurugram</h1>
+            <p>Discover premium properties across 100+ sectors. Buy, rent or find a flatmate — all in one place.</p>
+            </div>
+        </div>
+      </div>
+      <div class="hero-slide">
+        <img src="/static/images/cover2.png" alt="Cover 2">
+        <div class="hero-overlay">
+          <div class="hero-text">
+            <h1>Luxury Living<br>at Your Reach</h1>
+            <p>From DLF Cyber City to Sohna Road — explore Gurugram's finest residential properties.</p>
+            </div>
+        </div>
+      </div>
+      <div class="hero-slide">
+        <img src="/static/images/cover3.png" alt="Cover 3">
+        <div class="hero-overlay">
+          <div class="hero-text">
+            <h1>Rent Smarter,<br>Live Better</h1>
+            <p>Find affordable rentals and connect with like-minded flatmates in your area.</p>
+            </div>
+        </div>
+      </div>
+      <div class="hero-slide">
+        <img src="/static/images/cover4.png" alt="Cover 4">
+        <div class="hero-overlay">
+          <div class="hero-text">
+            <h1>Your Trusted<br>Property Partner</h1>
+            <p>End-to-end support from search to possession — we make property easy.</p>
+            </div>
+        </div>
+      </div>
+      <!-- Navigation dots -->
+      <div class="hero-dots" id="hero-dots"></div>
+    </section>
+
+    <!-- ══════════════════════════════════
+         2. EXPLORE THE PLACES
+    ══════════════════════════════════ -->
+    <section class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-label">Discover Gurugram</div>
+          <h2 class="section-title">Explore the Places</h2>
+          <p class="section-sub">Click on a locality to explore properties in that area</p>
+        </div>
+
+        <!-- 4 animated boxes: image slides from left, label from right -->
+        <div class="explore-grid">
+          <!-- DLF Cybercity → sector 24 -->
+          <div class="explore-box" onclick="gotoSector('sector 24')">
+            <img src="/static/images/DLF.jpg" alt="DLF Cybercity">
+            <div class="explore-box-label">DLF Cybercity</div>
+          </div>
+          <!-- Sohna Road → sohna road -->
+          <div class="explore-box" onclick="gotoSector('sohna road')">
+            <img src="/static/images/Sohna.jpg" alt="Sohna Road">
+            <div class="explore-box-label">Sohna Road</div>
+          </div>
+          <!-- Sushant Lok → sector 54 (covers 54 & 55) -->
+          <div class="explore-box" onclick="gotoSector('sector 54')">
+            <img src="/static/images/sushant.jpeg" alt="Sushant Lok">
+            <div class="explore-box-label">Sushant Lok</div>
+          </div>
+          <!-- Sector 66 -->
+          <div class="explore-box" onclick="gotoSector('sector 66')">
+            <img src="/static/images/66.jpg" alt="Sector 66">
+            <div class="explore-box-label">Sector 66</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════
+         3. APARTMENTS HOUSE AND MORE
+    ══════════════════════════════════ -->
+    <section class="section section-alt">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-label">Property Types</div>
+          <h2 class="section-title">Apartments, Houses & More</h2>
+          <p class="section-sub">Choose your preferred property type</p>
+        </div>
+
+        <!-- 2 animated boxes: Flat and House -->
+        <div class="type-grid">
+          <div class="type-box" onclick="gotoType('flat')">
+            <img src="/static/images/flats.jpg" alt="Flat"
+                 onerror="this.src='https://placehold.co/600x400/1A1A2E/C9982A?text=Flat'">
+            <div class="type-box-label">
+              Flat
+              <div class="type-box-sub">Apartments · Studio · Penthouse</div>
+            </div>
+          </div>
+          <div class="type-box" onclick="gotoType('house')">
+            <img src="/static/images/house.jpg" alt="House"
+                 onerror="this.src='https://placehold.co/600x400/252545/C9982A?text=House'">
+            <div class="type-box-label">
+              House
+              <div class="type-box-sub">Villa · Bungalow · Row House</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════
+         4. END TO END SUPPORT (services)
+    ══════════════════════════════════ -->
+    <section class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-label">Our Services</div>
+          <h2 class="section-title">End to End Support</h2>
+          <p class="section-sub">Your complete, hassle-free property journey, all in one place.</p>
+        </div>
+
+        <div class="services-grid">
+          <div class="service-card">
+            <div class="service-icon">🧑‍💼</div>
+            <div class="service-name">Dedicated Manager</div>
+            <div class="service-desc">Personalized guidance from search to possession for your property.</div>
+          </div>
+          <div class="service-card">
+            <div class="service-icon">📍</div>
+            <div class="service-name">Site Visits</div>
+            <div class="service-desc">Scheduled tours for the best property for rent or sale options.</div>
+          </div>
+          <div class="service-card">
+            <div class="service-icon">🏦</div>
+            <div class="service-name">Home Loan</div>
+            <div class="service-desc">Effortless financing support to simplify your property journey.</div>
+          </div>
+          <div class="service-card">
+            <div class="service-icon">📄</div>
+            <div class="service-name">Documentation</div>
+            <div class="service-desc">Seamless paperwork support managed by our expert team.</div>
+          </div>
+          <div class="service-card">
+            <div class="service-icon">📋</div>
+            <div class="service-name">Registration</div>
+            <div class="service-desc">Swift and secure registration process for your chosen property.</div>
+          </div>
+          <div class="service-card">
+            <div class="service-icon">🔄</div>
+            <div class="service-name">Society Transfer</div>
+            <div class="service-desc">Smooth coordination for quick and clear society formalities.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════
+         5. WHY CHOOSE US
+    ══════════════════════════════════ -->
+    <section class="section section-alt">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-label">Why Aashiyana</div>
+          <h2 class="section-title">Why Choose Us</h2>
+          <p class="section-sub">We are your one-stop destination to safely buy, sell, or rent from luxury apartments to affordable homes.</p>
+        </div>
+
+        <div class="why-grid">
+          <div class="why-card">
+            <div class="why-icon">🏘️</div>
+            <div class="why-name">Property Management</div>
+            <div class="why-desc">End-to-end care for your property with professional managers</div>
+          </div>
+          <div class="why-card">
+            <div class="why-icon">🤝</div>
+            <div class="why-name">Resale Services</div>
+            <div class="why-desc">Sell your home quickly and smartly with our expert network</div>
+          </div>
+          <div class="why-card">
+            <div class="why-icon">🏛️</div>
+            <div class="why-name">Loan Assistance</div>
+            <div class="why-desc">Home loan assistance made hassle-free with top banks</div>
+          </div>
+          <div class="why-card">
+            <div class="why-icon">🔑</div>
+            <div class="why-name">Rental Services</div>
+            <div class="why-desc">Find tenants or rental homes fast with verified listings</div>
+          </div>
+          <div class="why-card">
+            <div class="why-icon">✈️</div>
+            <div class="why-name">NRI Property Management</div>
+            <div class="why-desc">Managing your property while you are abroad, seamlessly</div>
+          </div>
+          <div class="why-card">
+            <div class="why-icon">⚖️</div>
+            <div class="why-name">Legal Documentation</div>
+            <div class="why-desc">Rental agreement and police verification handled by experts</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer style="background:var(--navy2);color:#888;text-align:center;padding:1.5rem;font-size:0.85rem">
+      © 2025 Aashiyana · Find Your Perfect Home in Gurugram
+    </footer>
+  </div>
+
+  <script src="/static/js/main.js"></script>
+  <script>
+    // ── Hero Carousel ──
+    const slides = document.querySelectorAll(".hero-slide");
+    const dotsContainer = document.getElementById("hero-dots");
+    let heroIdx = 0;
+
+    // Build dots
+    slides.forEach((_, i) => {
+      const dot = document.createElement("div");
+      dot.className = "hero-dot" + (i === 0 ? " active" : "");
+      dot.onclick = () => setSlide(i);
+      dotsContainer.appendChild(dot);
+    });
+
+    function setSlide(idx) {
+      slides[heroIdx].classList.remove("active");
+      dotsContainer.children[heroIdx].classList.remove("active");
+      heroIdx = idx;
+      slides[heroIdx].classList.add("active");
+      dotsContainer.children[heroIdx].classList.add("active");
+    }
+
+    // Auto-advance every 4 seconds
+    setInterval(() => setSlide((heroIdx + 1) % slides.length), 4000);
+
+    // ── Navigation helpers ──
+
+    /** Go to bproperty with sector pre-filtered */
+    function gotoSector(sector) {
+      window.location.href = `/bproperty?sector=${encodeURIComponent(sector)}`;
+    }
+
+    /** Go to bproperty with type pre-filtered */
+    function gotoType(type) {
+      window.location.href = `/bproperty?type=${encodeURIComponent(type)}`;
+    }
+  </script>
+</body>
+</html>

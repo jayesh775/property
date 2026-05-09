@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Table Viewer – Aashiyana</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    .table-page { padding: 1.5rem 2rem; max-width: 1600px; margin: 0 auto; }
+
+    /* Toolbar */
+    .table-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.2rem;
+      flex-wrap: wrap;
+      background: var(--bg2);
+      padding: 1rem 1.2rem;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+    }
+    .toolbar-label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Table wrapper with scroll */
+    .table-frame {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .table-scroll {
+      overflow: auto;
+      max-height: calc(100vh - 220px);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+    }
+    thead th {
+      background: var(--navy2);
+      color: var(--accent);
+      padding: 0.75rem 1rem;
+      text-align: left;
+      font-weight: 600;
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      border-right: 1px solid rgba(255,255,255,0.05);
+      letter-spacing: 0.3px;
+    }
+    tbody td {
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      white-space: nowrap;
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    tbody tr:hover td { background: var(--bg3); }
+    tbody tr:last-child td { border-bottom: none; }
+
+    /* Stats bar */
+    .stats-bar {
+      padding: 0.6rem 1.2rem;
+      background: var(--bg3);
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--text2);
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+    }
+
+    /* Notebook iframe */
+    .notebook-frame {
+      width: 100%;
+      height: calc(100vh - 200px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--bg2);
+    }
+
+    /* Table type badges */
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.55rem;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+    .badge-yes  { background: #d4f5e2; color: #1a7a45; }
+    .badge-no   { background: #f8d7da; color: #842029; }
+    .badge-flat { background: #dbeafe; color: #1e40af; }
+    .badge-house{ background: #fef3cd; color: #856404; }
+    [data-theme="dark"] .badge-yes  { background: #1a4d30; color: #6ddc9c; }
+    [data-theme="dark"] .badge-no   { background: #4d1a1e; color: #f88; }
+    [data-theme="dark"] .badge-flat { background: #1e3a5f; color: #93c5fd; }
+    [data-theme="dark"] .badge-house{ background: #4d3800; color: #ffc107; }
+
+    /* Loading spinner */
+    .loading-spinner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem;
+      flex-direction: column;
+      gap: 1rem;
+      color: var(--text2);
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <!-- Navbar injected by main.js -->
+  <div class="page-body">
+    <div class="table-page">
+
+      <!-- Toolbar -->
+      <div class="table-toolbar">
+        <span class="toolbar-label">View Table:</span>
+
+        <!-- Table selector listbox -->
+        <select class="form-select" id="table-select" style="min-width:160px"
+                onchange="loadTable(this.value)">
+          <option value="">— Select a Table —</option>
+          <option value="Property">🏠 Property</option>
+          <option value="Image">🖼️ Image</option>
+          <option value="Users">👤 Users</option>
+          <option value="Chat">💬 Chat</option>
+        </select>
+
+        <!-- Row count badge -->
+        <span id="row-badge" style="
+          background: var(--bg3);
+          border: 1px solid var(--border);
+          border-radius: 20px;
+          padding: 0.3rem 0.8rem;
+          font-size: 0.82rem;
+          color: var(--text2);
+          display: none;
+        "></span>
+
+        <!-- Search inside table -->
+        <input class="form-input" type="text" id="table-search"
+               placeholder="Search in table..." style="max-width:220px;display:none"
+               oninput="filterTable()">
+
+        <!-- Notebook button (top right) -->
+        <button class="btn btn-outline" style="margin-left:auto;font-size:0.85rem"
+                onclick="showNotebook()">
+          📓 View pro.ipynb
+        </button>
+      </div>
+
+      <!-- Content area: table or notebook -->
+      <div id="content-area">
+        <!-- Welcome state -->
+        <div class="table-frame" style="padding:4rem 2rem;text-align:center;color:var(--text2)">
+          <div style="font-size:3rem;margin-bottom:1rem">📊</div>
+          <h3 style="color:var(--text);margin-bottom:0.5rem">Database Table Viewer</h3>
+          <p style="font-size:0.9rem">Select a table from the dropdown above to explore the data</p>
+          <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-top:1.5rem">
+            <div onclick="loadTable('Property')" style="cursor:pointer;padding:0.8rem 1.2rem;
+                 background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border);
+                 font-size:0.88rem;transition:all 0.2s" onmouseover="this.style.borderColor='var(--accent)'"
+                 onmouseout="this.style.borderColor='var(--border)'">
+              🏠 Property <span style="color:var(--text2)">(3,554 rows)</span>
+            </div>
+            <div onclick="loadTable('Users')" style="cursor:pointer;padding:0.8rem 1.2rem;
+                 background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border);
+                 font-size:0.88rem;transition:all 0.2s" onmouseover="this.style.borderColor='var(--accent)'"
+                 onmouseout="this.style.borderColor='var(--border)'">
+              👤 Users <span style="color:var(--text2)">(25 rows)</span>
+            </div>
+            <div onclick="loadTable('Image')" style="cursor:pointer;padding:0.8rem 1.2rem;
+                 background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border);
+                 font-size:0.88rem;transition:all 0.2s" onmouseover="this.style.borderColor='var(--accent)'"
+                 onmouseout="this.style.borderColor='var(--border)'">
+              🖼️ Image <span style="color:var(--text2)">(3 rows)</span>
+            </div>
+            <div onclick="loadTable('Chat')" style="cursor:pointer;padding:0.8rem 1.2rem;
+                 background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border);
+                 font-size:0.88rem;transition:all 0.2s" onmouseover="this.style.borderColor='var(--accent)'"
+                 onmouseout="this.style.borderColor='var(--border)'">
+              💬 Chat <span style="color:var(--text2)">(11+ rows)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/main.js"></script>
+  <script>
+    let allRows    = [];   // store all rows for client-side search
+    let allColumns = [];
+
+    /* ══════════════════════════════════
+       LOAD TABLE DATA
+    ══════════════════════════════════ */
+    async function loadTable(tableName) {
+      if (!tableName) return;
+
+      // Sync the select dropdown
+      document.getElementById("table-select").value = tableName;
+
+      // Show loading
+      document.getElementById("content-area").innerHTML = `
+        <div class="table-frame">
+          <div class="loading-spinner">
+            <div class="spinner"></div>
+            <div>Loading ${tableName} table...</div>
+          </div>
+        </div>`;
+
+      const res  = await fetch(`/api/table/${tableName}`);
+      const data = await res.json();
+
+      if (data.error) {
+        document.getElementById("content-area").innerHTML =
+          `<div class="table-frame" style="padding:2rem;color:red;text-align:center">${data.error}</div>`;
+        return;
+      }
+
+      allColumns = data.columns;
+      allRows    = data.rows;
+
+      // Show search + badge
+      document.getElementById("row-badge").style.display = "inline-block";
+      document.getElementById("row-badge").textContent   = `${allRows.length} rows`;
+      document.getElementById("table-search").style.display = "block";
+      document.getElementById("table-search").value     = "";
+
+      renderTable(allRows, allColumns, tableName);
+    }
+
+    /* ══════════════════════════════════
+       RENDER TABLE
+    ══════════════════════════════════ */
+    function renderTable(rows, columns, tableName = "") {
+      if (!rows.length) {
+        document.getElementById("content-area").innerHTML =
+          `<div class="table-frame" style="padding:3rem;text-align:center;color:var(--text2)">No data found.</div>`;
+        return;
+      }
+
+      const headers = columns.map(c =>
+        `<th title="${c}">${c}</th>`
+      ).join("");
+
+      const bodyRows = rows.map(row => {
+        const cells = columns.map(col => {
+          let val = row[col] ?? "";
+          // Apply smart badges for specific columns
+          if (col === "Status") {
+            val = `<span class="badge ${val === 'yes' ? 'badge-yes' : 'badge-no'}">${val}</span>`;
+          } else if (col === "property_type") {
+            val = `<span class="badge ${val === 'flat' ? 'badge-flat' : 'badge-house'}">${val}</span>`;
+          } else if (col === "Furnishing_type" || col === "furnishing_type") {
+            const cls = val === "furnished" ? "badge-yes" : val === "unfurnished" ? "badge-no" : "badge-flat";
+            val = `<span class="badge ${cls}">${val}</span>`;
+          } else if (col === "i1" || col === "i2" || col === "i3" || col === "i4" || col === "i5" || col === "i6") {
+            // Show image thumbnail
+            if (val) val = `<img src="/static/images/${val}" style="height:30px;border-radius:4px;vertical-align:middle" onerror="this.style.display='none'"> ${val}`;
+          } else {
+            // Escape HTML for safety
+            val = String(val).replace(/</g,"&lt;").replace(/>/g,"&gt;");
+            // Truncate long text
+            if (val.length > 40) val = `<span title="${val}">${val.slice(0,40)}…</span>`;
+          }
+          return `<td>${val}</td>`;
+        }).join("");
+        return `<tr>${cells}</tr>`;
+      }).join("");
+
+      document.getElementById("content-area").innerHTML = `
+        <div class="table-frame">
+          <div class="table-scroll">
+            <table>
+              <thead><tr>${headers}</tr></thead>
+              <tbody>${bodyRows}</tbody>
+            </table>
+          </div>
+          <div class="stats-bar">
+            <span>📊 Table: <strong>${tableName}</strong></span>
+            <span>Rows: <strong>${rows.length}</strong></span>
+            <span>Columns: <strong>${columns.length}</strong></span>
+          </div>
+        </div>`;
+    }
+
+    /* ══════════════════════════════════
+       CLIENT-SIDE SEARCH / FILTER
+    ══════════════════════════════════ */
+    function filterTable() {
+      const q = document.getElementById("table-search").value.toLowerCase().trim();
+      if (!q) {
+        renderTable(allRows, allColumns);
+        document.getElementById("row-badge").textContent = `${allRows.length} rows`;
+        return;
+      }
+      const filtered = allRows.filter(row =>
+        Object.values(row).some(v => String(v).toLowerCase().includes(q))
+      );
+      renderTable(filtered, allColumns);
+      document.getElementById("row-badge").textContent = `${filtered.length} / ${allRows.length} rows`;
+    }
+
+    /* ══════════════════════════════════
+       SHOW NOTEBOOK
+    ══════════════════════════════════ */
+    function showNotebook() {
+      // Reset table select
+      document.getElementById("table-select").value       = "";
+      document.getElementById("row-badge").style.display  = "none";
+      document.getElementById("table-search").style.display = "none";
+      allRows = []; allColumns = [];
+
+      // Render notebook in an iframe
+      document.getElementById("content-area").innerHTML = `
+        <div class="table-frame" style="overflow:hidden">
+          <div style="padding:0.8rem 1.2rem;background:var(--bg3);border-bottom:1px solid var(--border);
+                      display:flex;align-items:center;gap:0.8rem;font-size:0.85rem;color:var(--text2)">
+            📓 <strong style="color:var(--text)">pro.ipynb</strong>
+            <span>— Property Analysis Notebook</span>
+            <span style="margin-left:auto;font-size:0.78rem">
+              File: PropertyWeb/pro.ipynb
+            </span>
+          </div>
+          <iframe
+            class="notebook-frame"
+            src="/static/notebook_placeholder.html"
+            style="border:none;background:var(--bg2)">
+          </iframe>
+        </div>`;
+
+      // If nbviewer or local jupyter is not available, show info card
+      document.querySelector(".notebook-frame").onerror = function() {
+        this.style.display = "none";
+      };
+    }
+
+    /* ══════════════════════════════════
+       KEYBOARD SHORTCUT
+    ══════════════════════════════════ */
+    document.addEventListener("keydown", e => {
+      // Ctrl+F to focus search
+      if ((e.ctrlKey || e.metaKey) && e.key === "f" && allRows.length) {
+        e.preventDefault();
+        document.getElementById("table-search").focus();
+      }
+    });
+  </script>
+</body>
+</html>

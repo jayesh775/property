@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Map – Aashiyana</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    /* Full-height map */
+    .map-wrap  { position: relative; height: calc(100vh - var(--nav-h)); overflow: hidden; }
+    #map       { width: 100%; height: 100%; }
+
+    /* Move +/- to bottom-left */
+    .leaflet-top.leaflet-left    { display: none; }
+    .leaflet-bottom.leaflet-left { bottom: 1.5rem; left: 1rem; }
+
+    /* ── Glass filter panel ── */
+    .filter-panel {
+      position: absolute;
+      top: 1rem; left: 5rem;
+      z-index: 700;
+      display: none;                             /* shown after zoom lands */
+      flex-direction: column;
+      gap: 0.55rem;
+      min-width: 210px; max-width: 235px;
+      background: rgba(10, 10, 28, 0.80);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(201,152,42,0.35);
+      border-radius: 14px;
+      padding: 0.85rem 1rem;
+      box-shadow: 0 6px 28px rgba(0,0,0,0.5);
+    }
+    .fp-title  {
+      font-size: 0.65rem; font-weight: 900;
+      text-transform: uppercase; letter-spacing: 1.2px;
+      color: #C9982A; margin-bottom: 0.1rem;
+    }
+    .fp-label  {
+      font-size: 0.68rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.4px;
+      color: rgba(200,200,230,0.65); margin-bottom: 2px; display: block;
+    }
+    .fp-select {
+      width: 100%; padding: 0.4rem 0.6rem;
+      border-radius: 8px; border: 1px solid rgba(201,152,42,0.28);
+      background: rgba(255,255,255,0.07); color: #fff;
+      font-size: 0.8rem; font-family: 'DM Sans', sans-serif;
+      outline: none; cursor: pointer;
+    }
+    .fp-select:focus  { border-color: rgba(201,152,42,0.65); }
+    .fp-select option { background: #12122a; color: #fff; }
+    .fp-select:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Price result inside panel */
+    .fp-result {
+      display: none;
+      background: rgba(201,152,42,0.12);
+      border: 1px solid rgba(201,152,42,0.38);
+      border-radius: 10px;
+      padding: 0.6rem 0.75rem;
+    }
+    .fp-result.show { display: block; }
+    .fpr-name  { font-size: 0.74rem; font-weight: 700; color: #fff; margin-bottom: 0.18rem; line-height: 1.3; }
+    .fpr-price { font-size: 1.2rem;  font-weight: 900; color: #C9982A; line-height: 1; }
+    .fpr-sub   { font-size: 0.67rem; color: rgba(255,255,255,0.45); margin-top: 0.15rem; }
+
+    /* Reset button */
+    .fp-reset {
+      align-self: flex-start; padding: 0.3rem 0.75rem;
+      font-size: 0.74rem; font-weight: 700;
+      border-radius: 8px; border: 1px solid rgba(201,152,42,0.38);
+      background: rgba(201,152,42,0.1); color: #C9982A;
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: background 0.2s;
+    }
+    .fp-reset:hover { background: rgba(201,152,42,0.25); }
+
+    /* ── Legend ── */
+    .map-legend {
+      position: absolute; bottom: 1.5rem; right: 1rem; z-index: 700;
+      background: rgba(10,10,28,0.80); backdrop-filter: blur(12px);
+      border: 1px solid rgba(201,152,42,0.25); border-radius: 12px;
+      padding: 0.7rem 0.95rem; color: #fff; font-size: 0.72rem; min-width: 115px;
+    }
+    .leg-title { font-weight: 800; color: #C9982A; font-size: 0.68rem;
+                 text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.45rem; }
+    .leg-row   { display: flex; align-items: center; gap: 0.45rem; margin-bottom: 0.28rem; }
+    .leg-dot   { width: 11px; height: 11px; border-radius: 50%;
+                 border: 1.5px solid rgba(255,255,255,0.2); flex-shrink: 0; }
+
+    /* ── Loading overlay ── */
+    .overlay {
+      position: absolute; inset: 0; z-index: 900;
+      background: rgba(8,8,22,0.75); backdrop-filter: blur(6px);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 1rem; color: #fff;
+      transition: opacity 0.8s ease;
+    }
+    .overlay.fade { opacity: 0; pointer-events: none; }
+    .ov-spin {
+      width: 44px; height: 44px;
+      border: 3px solid rgba(201,152,42,0.2);
+      border-top-color: #C9982A; border-radius: 50%;
+      animation: spin 0.85s linear infinite;
+    }
+    .ov-title { font-family: 'Playfair Display', serif; font-size: 1.5rem; color: #C9982A; }
+    .ov-sub   { font-size: 0.82rem; color: rgba(255,255,255,0.5); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Custom hover tooltip ── */
+    .map-tooltip {
+      position: absolute; z-index: 800;
+      background: rgba(10,10,28,0.92); backdrop-filter: blur(10px);
+      border: 1px solid rgba(201,152,42,0.4); border-radius: 10px;
+      padding: 0.55rem 0.85rem; pointer-events: none;
+      display: none; white-space: nowrap;
+    }
+    .map-tooltip.show { display: block; }
+    .tt-name  { font-size: 0.82rem; font-weight: 700; color: #C9982A; margin-bottom: 0.15rem; }
+    .tt-price { font-size: 0.9rem;  font-weight: 800; color: #fff; }
+    .tt-cnt   { font-size: 0.67rem; color: rgba(255,255,255,0.45); margin-top: 0.1rem; }
+
+    /* Leaflet dark popup */
+    .leaflet-popup-content-wrapper {
+      background: #12122a !important; color: #f0ede8 !important;
+      border-radius: 12px !important; border: 1px solid rgba(201,152,42,0.35) !important;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.6) !important;
+    }
+    .leaflet-popup-tip          { background: #12122a !important; }
+    .leaflet-popup-close-button { color: #C9982A !important; font-size: 1rem !important; }
+    .pu-name  { font-weight: 700; font-size: 0.88rem; color: #C9982A; margin-bottom: 0.25rem; }
+    .pu-price { font-size: 1rem; font-weight: 800; color: #fff; }
+    .pu-cnt   { font-size: 0.7rem; color: rgba(255,255,255,0.45); margin-top: 0.1rem; }
+  </style>
+</head>
+<body>
+<div class="page-body">
+<div class="map-wrap">
+
+  <!-- Loading overlay -->
+  <div class="overlay" id="overlay">
+    <div class="ov-spin"></div>
+    <div class="ov-title">Aashiyana</div>
+    <div class="ov-sub" id="ov-sub">Loading map…</div>
+  </div>
+
+  <!-- Custom hover tooltip (follows mouse) -->
+  <div class="map-tooltip" id="tooltip">
+    <div class="tt-name"  id="tt-name"></div>
+    <div class="tt-price" id="tt-price"></div>
+    <div class="tt-cnt"   id="tt-cnt"></div>
+  </div>
+
+  <!-- Glass filter panel -->
+  <div class="filter-panel" id="filter-panel">
+    <div class="fp-title">🗺 Price Map</div>
+
+    <div>
+      <span class="fp-label">Sector</span>
+      <select class="fp-select" id="sel-sector" onchange="onSectorChange()">
+        <option value="">— All Sectors —</option>
+      </select>
+    </div>
+
+    <div>
+      <span class="fp-label">Society</span>
+      <select class="fp-select" id="sel-society" onchange="onSocietyChange()" disabled>
+        <option value="">— Select sector first —</option>
+      </select>
+    </div>
+
+    <!-- Price result -->
+    <div class="fp-result" id="fp-result">
+      <div class="fpr-name"  id="fpr-name"></div>
+      <div class="fpr-price" id="fpr-price"></div>
+      <div class="fpr-sub"   id="fpr-sub"></div>
+    </div>
+
+    <button class="fp-reset" onclick="resetAll()">↺ Reset</button>
+  </div>
+
+  <!-- Map -->
+  <div id="map"></div>
+
+  <!-- Legend -->
+  <div class="map-legend">
+    <div class="leg-title">₹ / sqft</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#3b82f6"></div>&lt; 10</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#22c55e"></div>10 – 20</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#f59e0b"></div>20 – 40</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#ef4444"></div>&gt; 40</div>
+  </div>
+
+</div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/static/js/main.js"></script>
+<script>
+/* ══════════════════════════════════════════════════════════
+   SECTOR COORDINATES  — exact values provided by the user
+   format: "sector name" : [lat, lng]
+══════════════════════════════════════════════════════════ */
+const COORDS = {
+  "dwarka expressway": [28.4721, 76.9582],
+  "gwal pahari":       [28.4293, 77.1519],
+  "manesar":           [28.3515, 76.9366],
+  "sohna road":        [28.4060, 77.0425],
+  "sector 1":          [28.5168, 77.0362],
+  "sector 2":          [28.5081, 77.0284],
+  "sector 3":          [28.4950, 77.0180],
+  "sector 4":          [28.4776, 77.0103],
+  "sector 5":          [28.4801, 77.0224],
+  "sector 6":          [28.4720, 77.0180],
+  "sector 7":          [28.4680, 77.0120],
+  "sector 8":          [28.4620, 77.0100],
+  "sector 9":          [28.4580, 77.0080],
+  "sector 10":         [28.4545, 77.0017],
+  "sector 11":         [28.4480, 77.0150],
+  "sector 12":         [28.4650, 77.0320],
+  "sector 13":         [28.4750, 77.0350],
+  "sector 14":         [28.4722, 77.0424],
+  "sector 15":         [28.4596, 77.0423],
+  "sector 17":         [28.4820, 77.0480],
+  "sector 21":         [28.5110, 77.0650],
+  "sector 22":         [28.5020, 77.0550],
+  "sector 23":         [28.5147, 77.0500],
+  "sector 24":         [28.4910, 77.1010],
+  "sector 25":         [28.4850, 77.0880],
+  "sector 26":         [28.4780, 77.0980],
+  "sector 27":         [28.4680, 77.0820],
+  "sector 28":         [28.4752, 77.0850],
+  "sector 30":         [28.4610, 77.0680],
+  "sector 31":         [28.4511, 77.0543],
+  "sector 33":         [28.4320, 77.0310],
+  "sector 36":         [28.4150, 77.0050],
+  "sector 37":         [28.4380, 77.0050],
+  "sector 37d":        [28.4520, 76.9850],
+  "sector 38":         [28.4351, 77.0425],
+  "sector 39":         [28.4410, 77.0520],
+  "sector 40":         [28.4480, 77.0610],
+  "sector 41":         [28.4550, 77.0780],
+  "sector 43":         [28.4550, 77.0880],
+  "sector 45":         [28.4450, 77.0750],
+  "sector 46":         [28.4338, 77.0564],
+  "sector 47":         [28.4299, 77.0460],
+  "sector 48":         [28.4180, 77.0420],
+  "sector 49":         [28.4120, 77.0550],
+  "sector 50":         [28.4080, 77.0680],
+  "sector 51":         [28.4250, 77.0780],
+  "sector 52":         [28.4320, 77.0850],
+  "sector 53":         [28.4450, 77.1020],
+  "sector 54":         [28.4345, 77.1106],
+  "sector 55":         [28.4250, 77.1120],
+  "sector 56":         [28.4192, 77.1001],
+  "sector 57":         [28.4150, 77.0880],
+  "sector 58":         [28.4080, 77.1150],
+  "sector 59":         [28.4010, 77.1220],
+  "sector 60":         [28.3950, 77.1180],
+  "sector 61":         [28.3920, 77.1050],
+  "sector 62":         [28.3880, 77.0950],
+  "sector 63":         [28.3820, 77.0880],
+  "sector 63a":        [28.3780, 77.0950],
+  "sector 65":         [28.3975, 77.0694],
+  "sector 66":         [28.3980, 77.0580],
+  "sector 67":         [28.3880, 77.0650],
+  "sector 67a":        [28.3810, 77.0720],
+  "sector 68":         [28.3820, 77.0450],
+  "sector 69":         [28.3943, 77.0428],
+  "sector 70":         [28.3910, 77.0320],
+  "sector 70a":        [28.3850, 77.0250],
+  "sector 71":         [28.3980, 77.0250],
+  "sector 72":         [28.4050, 77.0250],
+  "sector 73":         [28.4080, 77.0150],
+  "sector 74":         [28.4020, 77.0080],
+  "sector 76":         [28.3820, 76.9980],
+  "sector 77":         [28.3752, 76.9954],
+  "sector 78":         [28.3680, 76.9850],
+  "sector 79":         [28.3580, 76.9920],
+  "sector 80":         [28.3520, 76.9850],
+  "sector 81":         [28.3910, 76.9680],
+  "sector 82":         [28.3971, 76.9602],
+  "sector 82a":        [28.3880, 76.9600],
+  "sector 83":         [28.3920, 76.9520],
+  "sector 84":         [28.4050, 76.9550],
+  "sector 85":         [28.4110, 76.9620],
+  "sector 86":         [28.4020, 76.9420],
+  "sector 88":         [28.4280, 76.9520],
+  "sector 88a":        [28.4320, 76.9420],
+  "sector 89":         [28.4220, 76.9350],
+  "sector 90":         [28.4120, 76.9280],
+  "sector 91":         [28.4050, 76.9180],
+  "sector 92":         [28.4110, 76.9150],
+  "sector 93":         [28.4180, 76.9220],
+  "sector 95":         [28.4210, 76.9050],
+  "sector 99":         [28.4620, 76.9450],
+  "sector 102":        [28.4851, 76.9572],
+  "sector 103":        [28.4980, 76.9650],
+  "sector 104":        [28.4950, 76.9750],
+  "sector 105":        [28.5050, 76.9820],
+  "sector 106":        [28.5120, 76.9850],
+  "sector 107":        [28.5180, 76.9920],
+  "sector 108":        [28.5250, 76.9980],
+  "sector 109":        [28.5220, 77.0120],
+  "sector 110":        [28.5310, 77.0150],
+  "sector 111":        [28.5350, 77.0180],
+  "sector 112":        [28.5380, 77.0220],
+  "sector 113":        [28.5374, 77.0271],
+};
+
+/* ══════════════════════════════════════════════════════════
+   SECTOR PRICE DATA — from Property table (avg PricePerSquare)
+══════════════════════════════════════════════════════════ */
+const SECTOR_PRICE = {
+  "dwarka expressway":10.67,"gwal pahari":13.36,"manesar":6.72,
+  "sohna road":9.63,"sector 1":10.20,"sector 10":15.02,
+  "sector 102":14.54,"sector 103":10.90,"sector 104":13.42,
+  "sector 105":20.76,"sector 106":12.07,"sector 107":8.47,
+  "sector 108":13.46,"sector 109":43.84,"sector 11":14.85,
+  "sector 110":28.57,"sector 111":18.09,"sector 112":22.84,
+  "sector 113":16.49,"sector 12":18.51,"sector 13":36.62,
+  "sector 14":21.69,"sector 15":14.74,"sector 17":22.28,
+  "sector 2":15.04,"sector 21":35.01,"sector 22":22.01,
+  "sector 23":17.00,"sector 24":43.39,"sector 25":39.57,
+  "sector 26":51.91,"sector 27":37.20,"sector 28":23.91,
+  "sector 3":17.28,"sector 30":24.62,"sector 31":89.36,
+  "sector 33":35.16,"sector 36":11.79,"sector 37":8.87,
+  "sector 37d":12.26,"sector 38":24.09,"sector 39":17.48,
+  "sector 4":34.31,"sector 40":23.40,"sector 41":45.11,
+  "sector 43":41.41,"sector 45":53.39,"sector 46":57.39,
+  "sector 47":45.36,"sector 48":27.45,"sector 49":28.53,
+  "sector 5":12.33,"sector 50":35.10,"sector 51":18.77,
+  "sector 52":14.12,"sector 53":29.50,"sector 54":42.71,
+  "sector 55":25.50,"sector 56":16.54,"sector 57":30.22,
+  "sector 58":20.55,"sector 59":23.10,"sector 6":25.29,
+  "sector 60":21.02,"sector 61":17.47,"sector 62":23.54,
+  "sector 63":23.80,"sector 63a":22.06,"sector 65":21.91,
+  "sector 66":31.18,"sector 67":21.32,"sector 67a":14.60,
+  "sector 68":12.36,"sector 69":13.55,"sector 7":25.73,
+  "sector 70":12.31,"sector 70a":18.25,"sector 71":10.60,
+  "sector 72":18.71,"sector 73":13.47,"sector 74":15.28,
+  "sector 76":11.90,"sector 77":11.59,"sector 78":9.70,
+  "sector 79":17.73,"sector 8":11.87,"sector 80":10.48,
+  "sector 81":14.40,"sector 82":12.09,"sector 82a":13.43,
+  "sector 83":13.65,"sector 84":8.43,"sector 85":12.66,
+  "sector 86":11.45,"sector 88":7.18,"sector 88a":22.22,
+  "sector 89":10.27,"sector 9":17.30,"sector 90":8.90,
+  "sector 91":9.93,"sector 92":8.19,"sector 93":9.03,
+  "sector 95":6.40,"sector 99":8.98,
+};
+
+/* ══════════════════════════════════════════════════════════
+   COLOUR by ₹/sqft
+══════════════════════════════════════════════════════════ */
+function pColor(p) {
+  if (p < 10) return "#3b82f6";
+  if (p < 20) return "#22c55e";
+  if (p < 40) return "#f59e0b";
+  return "#ef4444";
+}
+
+/* Society cache loaded from API after sector select */
+let societyCache = {};   /* society → avg_price */
+
+/* All sector markers for reference */
+let markers = {};
+
+/* ══════════════════════════════════════════════════════════
+   MAP INIT
+   Step 1: India view (zoom 5)
+   Step 2: After 1 sec → flyTo Gurugram over 5 sec
+   Step 3: On arrival → show markers + panel
+══════════════════════════════════════════════════════════ */
+const GURUGRAM   = [28.457, 77.029];
+const INDIA_VIEW = [20.5937, 78.9629];
+
+const map = L.map("map", {
+  zoomControl: false,
+  center: INDIA_VIEW,
+  zoom: 5,
+  preferCanvas: true,     /* better performance with many markers */
+});
+
+L.control.zoom({ position: "bottomleft" }).addTo(map);
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution: "© OpenStreetMap contributors",
+  maxZoom: 19,
+}).addTo(map);
+
+/* Update overlay text then start zoom */
+setTimeout(() => {
+  document.getElementById("ov-sub").textContent = "Zooming into Gurugram…";
+  map.flyTo(GURUGRAM, 12, { duration: 5, easeLinearity: 0.2 });
+}, 1000);
+
+/* When Gurugram zoom lands → remove overlay, show markers & panel */
+let zoomLanded = false;
+map.on("moveend", () => {
+  if (zoomLanded) return;
+  if (map.getZoom() < 10) return;   /* ignore India-level moves */
+  zoomLanded = true;
+
+  /* Fade out overlay */
+  const ov = document.getElementById("overlay");
+  ov.classList.add("fade");
+  setTimeout(() => ov.style.display = "none", 800);
+
+  /* Show filter panel & render markers */
+  document.getElementById("filter-panel").style.display = "flex";
+  renderSectorMarkers();
+  populateSectorDropdown();
+});
+
+/* ══════════════════════════════════════════════════════════
+   HOVER TOOLTIP  (follows mouse over the map container)
+══════════════════════════════════════════════════════════ */
+const tooltip   = document.getElementById("tooltip");
+const mapWrap   = document.querySelector(".map-wrap");
+
+mapWrap.addEventListener("mousemove", e => {
+  /* Position tooltip near cursor, keep inside viewport */
+  const rect = mapWrap.getBoundingClientRect();
+  let x = e.clientX - rect.left + 14;
+  let y = e.clientY - rect.top  - 10;
+  if (x + 200 > rect.width)  x = e.clientX - rect.left - 180;
+  if (y + 100 > rect.height) y = e.clientY - rect.top  - 90;
+  tooltip.style.left = x + "px";
+  tooltip.style.top  = y + "px";
+});
+
+function showTooltip(name, price, cnt) {
+  document.getElementById("tt-name").textContent  = capitalize(name);
+  document.getElementById("tt-price").textContent = `₹${price} / sqft`;
+  document.getElementById("tt-cnt").textContent   = `${cnt} properties`;
+  tooltip.classList.add("show");
+}
+function hideTooltip() { tooltip.classList.remove("show"); }
+
+/* ══════════════════════════════════════════════════════════
+   RENDER SECTOR MARKERS
+   One circle per sector at its exact coordinate.
+   Hover → custom tooltip. Click → zoom + load societies.
+══════════════════════════════════════════════════════════ */
+const secLayer = L.layerGroup().addTo(map);
+
+function renderSectorMarkers() {
+  secLayer.clearLayers();
+  markers = {};
+
+  Object.entries(COORDS).forEach(([name, [lat, lng]]) => {
+    const price = SECTOR_PRICE[name];
+    if (price === undefined) return;  /* no price data → skip */
+
+    const m = L.circleMarker([lat, lng], {
+      radius: 10,
+      fillColor: pColor(price),
+      color: "#fff",
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 0.88,
+    });
+
+    /* Hover events → custom tooltip */
+    m.on("mouseover", () => showTooltip(name, price, "—"));
+    m.on("mouseout",  () => hideTooltip());
+
+    /* Click → select in dropdown, zoom, load societies */
+    m.on("click", () => {
+      const sel = document.getElementById("sel-sector");
+      sel.value = name;
+      onSectorChange();
+      map.flyTo([lat, lng], 14, { duration: 1.5 });
+    });
+
+    m.addTo(secLayer);
+    markers[name] = m;
+  });
+}
+
+/* ══════════════════════════════════════════════════════════
+   SECTOR DROPDOWN
+══════════════════════════════════════════════════════════ */
+function populateSectorDropdown() {
+  const sel = document.getElementById("sel-sector");
+  /* Sort sectors: special areas first, then "sector N" numerically */
+  const special = ["dwarka expressway","gwal pahari","manesar","sohna road"];
+  const numbered = Object.keys(COORDS)
+    .filter(k => !special.includes(k))
+    .sort((a, b) => {
+      const na = parseInt(a.replace(/\D/g,"")) || 0;
+      const nb = parseInt(b.replace(/\D/g,"")) || 0;
+      return na - nb;
+    });
+  [...special, ...numbered].forEach(name => {
+    if (!COORDS[name]) return;
+    const o = document.createElement("option");
+    o.value = name; o.textContent = capitalize(name);
+    sel.appendChild(o);
+  });
+}
+
+/* ══════════════════════════════════════════════════════════
+   SOCIETY DROPDOWN  (populated from Property table via API)
+══════════════════════════════════════════════════════════ */
+async function loadSocieties(sector) {
+  const sel = document.getElementById("sel-society");
+  sel.innerHTML = `<option value="">⏳ Loading…</option>`;
+  sel.disabled  = true;
+
+  try {
+    /* /api/map/societies?sector=… returns [{society, avg_price, count, sector}] */
+    const res  = await fetch(`/api/map/societies?sector=${encodeURIComponent(sector)}`);
+    const data = await res.json();
+
+    societyCache = {};
+    data.forEach(r => { societyCache[r.society] = r; });
+
+    sel.innerHTML = `<option value="">— All Societies —</option>`;
+    data.sort((a,b) => a.society.localeCompare(b.society)).forEach(r => {
+      const o = document.createElement("option");
+      o.value = r.society;
+      o.textContent = capitalize(r.society);
+      sel.appendChild(o);
+    });
+    sel.disabled = data.length === 0;
+  } catch {
+    sel.innerHTML = `<option value="">Error loading</option>`;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   FILTER EVENTS
+══════════════════════════════════════════════════════════ */
+function onSectorChange() {
+  const sector = document.getElementById("sel-sector").value;
+  hideResult();
+
+  /* Reset society dropdown */
+  const socSel = document.getElementById("sel-society");
+  socSel.innerHTML = `<option value="">— Select sector first —</option>`;
+  socSel.disabled  = true;
+
+  if (!sector) {
+    /* Back to city overview */
+    map.flyTo(GURUGRAM, 12, { duration: 1.5 });
+    /* Reset all markers to normal size */
+    Object.values(markers).forEach(m => m.setRadius(10));
+    return;
+  }
+
+  /* Fly to selected sector */
+  const coords = COORDS[sector];
+  if (coords) map.flyTo(coords, 14, { duration: 1.5 });
+
+  /* Highlight selected marker, dim others */
+  const price = SECTOR_PRICE[sector] ?? 0;
+  Object.entries(markers).forEach(([name, m]) => {
+    if (name === sector) {
+      m.setRadius(16);
+      m.setStyle({ weight: 3, color: "#C9982A" });
+    } else {
+      m.setRadius(8);
+      m.setStyle({ weight: 1, color: "#fff", fillOpacity: 0.4 });
+    }
+  });
+
+  /* Show sector price immediately in result card */
+  showResult(capitalize(sector), price, null, "sector average");
+
+  /* Load society dropdown */
+  loadSocieties(sector);
+}
+
+function onSocietyChange() {
+  const society = document.getElementById("sel-society").value;
+  const sector  = document.getElementById("sel-sector").value;
+  if (!society) {
+    /* Revert to sector result */
+    const price = SECTOR_PRICE[sector] ?? 0;
+    if (price) showResult(capitalize(sector), price, null, "sector average");
+    else hideResult();
+    return;
+  }
+  const d = societyCache[society];
+  if (d) showResult(capitalize(society), d.avg_price, d.count, capitalize(sector));
+}
+
+/* ══════════════════════════════════════════════════════════
+   RESULT CARD inside filter panel
+══════════════════════════════════════════════════════════ */
+function showResult(name, price, count, sub) {
+  document.getElementById("fpr-name").textContent  = name;
+  document.getElementById("fpr-price").textContent = `₹${price} / sqft`;
+  document.getElementById("fpr-sub").textContent   =
+    count !== null ? `${count} listings · ${sub}` : sub;
+  document.getElementById("fp-result").classList.add("show");
+}
+function hideResult() {
+  document.getElementById("fp-result").classList.remove("show");
+}
+
+/* ══════════════════════════════════════════════════════════
+   RESET
+══════════════════════════════════════════════════════════ */
+function resetAll() {
+  document.getElementById("sel-sector").value = "";
+  document.getElementById("sel-society").innerHTML =
+    `<option value="">— Select sector first —</option>`;
+  document.getElementById("sel-society").disabled = true;
+  hideResult();
+  /* Restore all markers */
+  Object.values(markers).forEach(m => {
+    m.setRadius(10);
+    m.setStyle({ weight: 2, color: "#fff", fillOpacity: 0.88 });
+  });
+  map.flyTo(GURUGRAM, 12, { duration: 1.5 });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rent Property – Aashiyana</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <!-- Navbar injected by main.js -->
+  <div class="page-body">
+
+    <!-- Page Header -->
+    <div style="background:var(--navy2);padding:2.5rem 2rem 2rem;text-align:center;position:relative">
+      <div class="section-label">Gurugram Rentals</div>
+      <h1 style="color:#fff;font-size:2rem;margin-top:0.3rem">Rent a Property</h1>
+      <p style="color:rgba(255,255,255,0.6);margin-top:0.5rem;font-size:0.95rem">
+        Browse <span id="total-count">—</span> rental properties
+      </p>
+      <!-- Find Flatmate button centred at top -->
+      <button class="btn btn-primary" style="margin-top:1rem;font-size:0.95rem"
+        onclick="openFlatmateDialog()">👫 Find Flatmate</button>
+    </div>
+
+    <div class="prop-layout">
+
+      <!-- ══════════════════════
+           LEFT: FILTER SIDEBAR
+      ══════════════════════ -->
+      <aside class="filter-sidebar">
+        <div class="filter-title">🔧 Filters</div>
+
+        <!-- Sort -->
+        <div class="filter-section">
+          <label class="filter-label">Sort By Rent</label>
+          <select class="form-select" id="sort-select">
+            <option value="asc">Low → High</option>
+            <option value="desc">High → Low</option>
+          </select>
+        </div>
+
+        <!-- Sector -->
+        <div class="filter-section">
+          <label class="filter-label">Area / Sector</label>
+          <select class="form-select" id="sector-select">
+            <option value="">All Sectors</option>
+          </select>
+        </div>
+
+        <!-- Price Range -->
+        <div class="filter-section">
+          <label class="filter-label">Rent Range (₹K/mo)</label>
+          <div class="price-inputs">
+            <input class="form-input" type="number" id="min-price" placeholder="Min" min="0">
+            <input class="form-input" type="number" id="max-price" placeholder="Max" min="0">
+          </div>
+        </div>
+
+        <!-- Property Type -->
+        <div class="filter-section">
+          <label class="filter-label">Property Type</label>
+          <label class="filter-checkbox"><input type="checkbox" value="flat"  class="type-cb"> Flat</label>
+          <label class="filter-checkbox"><input type="checkbox" value="house" class="type-cb"> House</label>
+        </div>
+
+        <!-- Bedrooms -->
+        <div class="filter-section">
+          <label class="filter-label">Bedrooms</label>
+          <label class="filter-checkbox"><input type="checkbox" value="1"  class="bed-cb"> 1 BHK</label>
+          <label class="filter-checkbox"><input type="checkbox" value="2"  class="bed-cb"> 2 BHK</label>
+          <label class="filter-checkbox"><input type="checkbox" value="3"  class="bed-cb"> 3 BHK</label>
+          <label class="filter-checkbox"><input type="checkbox" value="4+" class="bed-cb"> 4+ BHK</label>
+        </div>
+
+        <!-- Furnishing -->
+        <div class="filter-section">
+          <label class="filter-label">Furnishing Type</label>
+          <label class="filter-checkbox"><input type="checkbox" value="furnished"     class="fur-cb"> Furnished</label>
+          <label class="filter-checkbox"><input type="checkbox" value="semifurnished" class="fur-cb"> Semi-Furnished</label>
+          <label class="filter-checkbox"><input type="checkbox" value="unfurnished"   class="fur-cb"> Unfurnished</label>
+        </div>
+
+        <button class="btn btn-primary btn-full" onclick="applyFilters()">Apply Filters</button>
+        <button class="btn btn-outline btn-full" onclick="resetFilters()" style="margin-top:0.6rem">Reset</button>
+      </aside>
+
+      <!-- ══════════════════════
+           RIGHT: PROPERTY GRID
+      ══════════════════════ -->
+      <div style="flex:1">
+        <div class="prop-count" id="result-count"></div>
+        <div class="prop-grid" id="prop-grid">
+          <div class="no-results" id="loading">
+            <div style="font-size:2rem">⏳</div>
+            <div>Loading rentals...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       FLATMATE DIALOG
+  ══════════════════════════════════ -->
+  <div class="dialog-overlay" id="flatmate-dialog">
+    <div class="dialog-box" style="max-width:560px">
+      <button class="dialog-close" onclick="closeDialog('flatmate-dialog')">✕</button>
+      <h2 class="dialog-title">👫 Find a Flatmate</h2>
+      <p style="color:var(--text2);font-size:0.9rem;margin-bottom:1.5rem">
+        Connect with people looking for flatmates in your office/college sector.
+      </p>
+      <!-- Step 1: ask user -->
+      <div id="flatmate-step1">
+        <p style="margin-bottom:1rem;font-weight:600">Are you looking for a flatmate?</p>
+        <div style="display:flex;gap:1rem">
+          <button class="btn btn-primary" onclick="confirmFlatmate(true)">✅ Yes, I am!</button>
+          <button class="btn btn-outline"  onclick="confirmFlatmate(false)">❌ No, just browsing</button>
+        </div>
+      </div>
+      <!-- Step 2: show matches -->
+      <div id="flatmate-step2" style="display:none">
+        <h3 style="margin-bottom:1rem;font-size:1rem">Flatmates near your workplace 📍</h3>
+        <div id="flatmate-list" style="display:flex;flex-direction:column;gap:0.8rem;max-height:350px;overflow-y:auto"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/main.js"></script>
+  <script>
+    // ── Load sectors ──
+    async function loadSectors() {
+      const res  = await fetch("/api/sectors");
+      const data = await res.json();
+      const sel  = document.getElementById("sector-select");
+      data.forEach(s => {
+        const opt       = document.createElement("option");
+        opt.value       = s;
+        opt.textContent = capitalize(s);
+        sel.appendChild(opt);
+      });
+    }
+
+    // ── Get filters from UI ──
+    function getFilters() {
+      return {
+        sector:    document.getElementById("sector-select").value,
+        min_price: document.getElementById("min-price").value || 0,
+        max_price: document.getElementById("max-price").value || 99999,
+        sort:      document.getElementById("sort-select").value,
+        types:     [...document.querySelectorAll(".type-cb:checked")].map(el => el.value),
+        bedrooms:  [...document.querySelectorAll(".bed-cb:checked")].map(el => el.value),
+        furnishing:[...document.querySelectorAll(".fur-cb:checked")].map(el => el.value),
+      };
+    }
+
+    // ── Fetch & render rentals ──
+    async function applyFilters() {
+      const f = getFilters();
+      const params = new URLSearchParams({
+        sector: f.sector, min_price: f.min_price, max_price: f.max_price, sort: f.sort,
+      });
+      f.types.forEach(t     => params.append("type",       t));
+      f.bedrooms.forEach(b  => params.append("bedrooms",   b));
+      f.furnishing.forEach(x => params.append("furnishing", x));
+
+      document.getElementById("prop-grid").innerHTML =
+        `<div class="no-results"><div style="font-size:2rem">⏳</div><div>Loading...</div></div>`;
+
+      const res  = await fetch(`/api/rentals?${params}`);
+      const data = await res.json();
+
+      document.getElementById("total-count").textContent = data.length;
+      document.getElementById("result-count").textContent = `Showing ${data.length} rentals`;
+
+      if (!data.length) {
+        document.getElementById("prop-grid").innerHTML =
+          `<div class="no-results"><div class="no-icon">🏚️</div><div>No rentals found.</div></div>`;
+        return;
+      }
+
+      // Build rental cards (isRent = true)
+      document.getElementById("prop-grid").innerHTML =
+        data.map(p => buildPropertyCard(p, true)).join("");
+      initCarousels();
+    }
+
+    function resetFilters() {
+      document.getElementById("sector-select").value = "";
+      document.getElementById("min-price").value     = "";
+      document.getElementById("max-price").value     = "";
+      document.getElementById("sort-select").value   = "asc";
+      document.querySelectorAll(".type-cb,.bed-cb,.fur-cb").forEach(cb => cb.checked = false);
+      applyFilters();
+    }
+
+    document.addEventListener("change", (e) => {
+      if (e.target.matches(".type-cb,.bed-cb,.fur-cb,#sort-select,#sector-select")) applyFilters();
+    });
+
+    // ── Flatmate Dialog ──
+    function openFlatmateDialog() {
+      const user = authGet();
+      if (!user) { showToast("Please login first"); openLogin(); return; }
+      // Reset to step 1
+      document.getElementById("flatmate-step1").style.display = "block";
+      document.getElementById("flatmate-step2").style.display = "none";
+      openDialog("flatmate-dialog");
+    }
+
+    async function confirmFlatmate(looking) {
+      const user = authGet();
+      if (!user) return;
+
+      if (looking) {
+        // Update user status to 'yes'
+        await fetch("/api/flatmate/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: user.UserId })
+        });
+        showToast("Status updated — you are now visible to others!");
+      }
+
+      // Fetch flatmates in same orgSector
+      const res  = await fetch(`/api/flatmate?orgSector=${encodeURIComponent(user.orgSector || "")}`);
+      const data = await res.json();
+
+      // Filter out self
+      const others = data.filter(u => u.UserId !== user.UserId);
+
+      document.getElementById("flatmate-step1").style.display = "none";
+      document.getElementById("flatmate-step2").style.display = "block";
+
+      if (!others.length) {
+        document.getElementById("flatmate-list").innerHTML =
+          `<p style="color:var(--text2);text-align:center;padding:1rem">
+            No flatmates found in your sector yet. Check back later!
+          </p>`;
+        return;
+      }
+
+      document.getElementById("flatmate-list").innerHTML = others.map(u => `
+        <div style="display:flex;align-items:center;justify-content:space-between;
+                    padding:0.8rem;background:var(--bg3);border-radius:var(--radius);
+                    border:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:0.8rem">
+            <div class="chat-avatar">${u.name.charAt(0)}</div>
+            <div>
+              <div style="font-weight:600;font-size:0.9rem">${u.name}</div>
+              <div style="font-size:0.78rem;color:var(--text2)">${u.occupation} · ${u.organisation}</div>
+              <div style="font-size:0.75rem;color:var(--text2)">📍 ${capitalize(u.orgSector)}</div>
+            </div>
+          </div>
+          <button class="btn btn-primary" style="padding:0.35rem 0.8rem;font-size:0.78rem"
+            onclick="goConnect(${u.UserId})">💬 Connect</button>
+        </div>
+      `).join("");
+    }
+
+    // ── Init ──
+    document.addEventListener("DOMContentLoaded", async () => {
+      await loadSectors();
+      applyFilters();
+    });
+  </script>
+</body>
+</html>

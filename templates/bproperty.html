@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buy Property – Aashiyana</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <!-- Navbar injected by main.js -->
+  <div class="page-body">
+
+    <!-- Page Header -->
+    <div style="background:var(--navy2);padding:2.5rem 2rem 2rem;text-align:center;margin-bottom:0">
+      <div class="section-label">Gurugram Real Estate</div>
+      <h1 style="color:#fff;font-size:2rem;margin-top:0.3rem">Buy Your Dream Property</h1>
+      <p style="color:rgba(255,255,255,0.6);margin-top:0.5rem;font-size:0.95rem">
+        Browse <span id="total-count">—</span> properties across Gurugram
+      </p>
+    </div>
+
+    <div class="prop-layout">
+
+      <!-- ══════════════════════
+           LEFT: FILTER SIDEBAR
+      ══════════════════════ -->
+      <aside class="filter-sidebar">
+        <div class="filter-title">🔧 Filters</div>
+
+        <!-- Sort -->
+        <div class="filter-section">
+          <label class="filter-label">Sort By Price</label>
+          <select class="form-select" id="sort-select">
+            <option value="asc">Low → High</option>
+            <option value="desc">High → Low</option>
+          </select>
+        </div>
+
+        <!-- Sector -->
+        <div class="filter-section">
+          <label class="filter-label">Area / Sector</label>
+          <select class="form-select" id="sector-select">
+            <option value="">All Sectors</option>
+          </select>
+        </div>
+
+        <!-- Price Range -->
+        <div class="filter-section">
+          <label class="filter-label">Price Range (Cr)</label>
+          <div class="price-inputs">
+            <input class="form-input" type="number" id="min-price" placeholder="Min" step="0.1" min="0">
+            <input class="form-input" type="number" id="max-price" placeholder="Max" step="0.1" min="0">
+          </div>
+        </div>
+
+        <!-- Property Type -->
+        <div class="filter-section">
+          <label class="filter-label">Property Type</label>
+          <label class="filter-checkbox">
+            <input type="checkbox" value="flat" class="type-cb"> Flat
+          </label>
+          <label class="filter-checkbox">
+            <input type="checkbox" value="house" class="type-cb"> House
+          </label>
+        </div>
+
+        <!-- Bedrooms -->
+        <div class="filter-section">
+          <label class="filter-label">Bedrooms</label>
+          <label class="filter-checkbox"><input type="checkbox" value="1" class="bed-cb"> 1 BHK</label>
+          <label class="filter-checkbox"><input type="checkbox" value="2" class="bed-cb"> 2 BHK</label>
+          <label class="filter-checkbox"><input type="checkbox" value="3" class="bed-cb"> 3 BHK</label>
+          <label class="filter-checkbox"><input type="checkbox" value="4+" class="bed-cb"> 4+ BHK</label>
+        </div>
+
+        <!-- Furnishing -->
+        <div class="filter-section">
+          <label class="filter-label">Furnishing Type</label>
+          <label class="filter-checkbox"><input type="checkbox" value="furnished"    class="fur-cb"> Furnished</label>
+          <label class="filter-checkbox"><input type="checkbox" value="semifurnished" class="fur-cb"> Semi-Furnished</label>
+          <label class="filter-checkbox"><input type="checkbox" value="unfurnished"  class="fur-cb"> Unfurnished</label>
+        </div>
+
+        <!-- Apply / Reset Buttons -->
+        <button class="btn btn-primary btn-full" onclick="applyFilters()">Apply Filters</button>
+        <button class="btn btn-outline btn-full" onclick="resetFilters()" style="margin-top:0.6rem">Reset</button>
+      </aside>
+
+      <!-- ══════════════════════
+           RIGHT: PROPERTY GRID
+      ══════════════════════ -->
+      <div style="flex:1">
+        <div class="prop-count" id="result-count"></div>
+        <div class="prop-grid" id="prop-grid">
+          <!-- Cards injected here by JS -->
+          <div class="no-results" id="loading">
+            <div style="font-size:2rem">⏳</div>
+            <div>Loading properties...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/main.js"></script>
+  <script>
+    // ── Load sectors into dropdown ──
+    async function loadSectors() {
+      const res  = await fetch("/api/sectors");
+      const data = await res.json();
+      const sel  = document.getElementById("sector-select");
+      data.forEach(s => {
+        const opt    = document.createElement("option");
+        opt.value    = s;
+        opt.textContent = capitalize(s);
+        sel.appendChild(opt);
+      });
+    }
+
+    // ── Read filters from UI ──
+    function getFilters() {
+      return {
+        sector:    document.getElementById("sector-select").value,
+        min_price: document.getElementById("min-price").value || 0,
+        max_price: document.getElementById("max-price").value || 9999,
+        sort:      document.getElementById("sort-select").value,
+        types:     [...document.querySelectorAll(".type-cb:checked")].map(el => el.value),
+        bedrooms:  [...document.querySelectorAll(".bed-cb:checked")].map(el => el.value),
+        furnishing:[...document.querySelectorAll(".fur-cb:checked")].map(el => el.value),
+      };
+    }
+
+    // ── Fetch and render properties ──
+    async function applyFilters() {
+      const f   = getFilters();
+      const params = new URLSearchParams({
+        sector:    f.sector,
+        min_price: f.min_price,
+        max_price: f.max_price,
+        sort:      f.sort,
+      });
+      f.types.forEach(t    => params.append("type",      t));
+      f.bedrooms.forEach(b => params.append("bedrooms",  b));
+      f.furnishing.forEach(x => params.append("furnishing", x));
+
+      document.getElementById("prop-grid").innerHTML =
+        `<div class="no-results" id="loading"><div style="font-size:2rem">⏳</div><div>Loading...</div></div>`;
+
+      const res  = await fetch(`/api/properties?${params}`);
+      const data = await res.json();
+
+      document.getElementById("total-count").textContent = data.length;
+      document.getElementById("result-count").textContent =
+        `Showing ${data.length} properties`;
+
+      if (!data.length) {
+        document.getElementById("prop-grid").innerHTML =
+          `<div class="no-results">
+            <div class="no-icon">🏚️</div>
+            <div>No properties found. Try adjusting your filters.</div>
+          </div>`;
+        return;
+      }
+
+      document.getElementById("prop-grid").innerHTML =
+        data.map(p => buildPropertyCard(p, false)).join("");
+
+      // Start image carousels after rendering
+      initCarousels();
+    }
+
+    // ── Reset all filters ──
+    function resetFilters() {
+      document.getElementById("sector-select").value = "";
+      document.getElementById("min-price").value     = "";
+      document.getElementById("max-price").value     = "";
+      document.getElementById("sort-select").value   = "asc";
+      document.querySelectorAll(".type-cb,.bed-cb,.fur-cb").forEach(cb => cb.checked = false);
+      applyFilters();
+    }
+
+    // ── Auto-apply filter on change ──
+    document.addEventListener("change", (e) => {
+      if (e.target.matches(".type-cb,.bed-cb,.fur-cb,#sort-select,#sector-select")) {
+        applyFilters();
+      }
+    });
+
+    // ── Read URL params on load (from index.html explore boxes) ──
+    function readURLParams() {
+      const params = new URLSearchParams(window.location.search);
+      const sector = params.get("sector");
+      const type   = params.get("type");
+      if (sector) {
+        // Wait for sectors to load then set value
+        setTimeout(() => {
+          document.getElementById("sector-select").value = sector;
+        }, 300);
+      }
+      if (type) {
+        const cb = document.querySelector(`.type-cb[value="${type}"]`);
+        if (cb) cb.checked = true;
+      }
+    }
+
+    // ── Init ──
+    document.addEventListener("DOMContentLoaded", async () => {
+      await loadSectors();
+      readURLParams();
+      applyFilters();
+    });
+  </script>
+</body>
+</html>

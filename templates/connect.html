@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connect – Aashiyana</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    /* No page scroll — chat uses full height */
+    body, html { overflow: hidden; }
+
+    /* All users panel (left of conversations) */
+    .all-users-panel {
+      width: 260px;
+      background: var(--bg3);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+    .all-users-header {
+      padding: 1rem;
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .all-users-search {
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .all-users-search input {
+      width: 100%;
+      padding: 0.45rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: var(--bg2);
+      color: var(--text);
+      font-size: 0.83rem;
+      outline: none;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .all-user-item {
+      padding: 0.7rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      transition: background var(--transition);
+    }
+    .all-user-item:hover { background: var(--bg2); }
+    .all-user-item.active { background: rgba(201,152,42,0.1); }
+    .all-user-name { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+    .all-user-occ  { font-size: 0.72rem; color: var(--text2); }
+
+    /* Login prompt overlay for chat */
+    .chat-login-prompt {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      color: var(--text2);
+    }
+    .chat-login-prompt .big-icon { font-size: 3rem; }
+    .chat-login-prompt p { font-size: 0.9rem; text-align: center; }
+
+    /* Typing indicator */
+    .typing-indicator {
+      display: flex;
+      gap: 4px;
+      padding: 0.5rem 0.8rem;
+      align-self: flex-start;
+    }
+    .typing-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--text2);
+      animation: typingBounce 1.2s infinite ease-in-out;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typingBounce {
+      0%, 80%, 100% { transform: translateY(0); }
+      40%           { transform: translateY(-6px); }
+    }
+
+    /* Unread badge */
+    .unread-badge {
+      background: var(--accent);
+      color: var(--navy);
+      font-size: 0.65rem;
+      font-weight: 700;
+      border-radius: 10px;
+      padding: 0.1rem 0.4rem;
+      margin-left: auto;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar injected by main.js -->
+  <div class="page-body" style="overflow:hidden">
+    <div class="chat-layout">
+
+      <!-- ══════════════════════
+           ALL USERS (left panel)
+      ══════════════════════ -->
+      <div class="all-users-panel">
+        <div class="all-users-header">👥 All Users</div>
+        <div class="all-users-search">
+          <input type="text" id="user-search" placeholder="Search users..." oninput="filterUsers()">
+        </div>
+        <div style="overflow-y:auto;flex:1" id="all-users-list">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- ══════════════════════
+           CONVERSATIONS (middle)
+      ══════════════════════ -->
+      <div class="chat-sidebar">
+        <div class="chat-sidebar-header">💬 Chats</div>
+        <div class="chat-user-list" id="conv-list">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- ══════════════════════
+           MESSAGES (right)
+      ══════════════════════ -->
+      <div class="chat-main" id="chat-main">
+        <!-- Will show login prompt or messages -->
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/main.js"></script>
+  <script>
+    let allUsers      = [];     // all users from API
+    let currentUserId = null;   // logged-in user ID
+    let activeOtherId = null;   // currently open chat partner ID
+    let pollInterval  = null;   // message polling interval
+
+    /* ══════════════════════════════════
+       INIT
+    ══════════════════════════════════ */
+    document.addEventListener("DOMContentLoaded", async () => {
+      const user = authGet();
+
+      // Load all users list
+      const res = await fetch("/api/users");
+      allUsers  = await res.json();
+      renderAllUsers(allUsers);
+
+      if (!user) {
+        // Show login prompt in chat area
+        renderLoginPrompt();
+        return;
+      }
+
+      currentUserId = user.UserId;
+
+      // Load conversations for logged-in user
+      loadConversations();
+
+      // Check URL param ?to=userId (from Connect button on property cards)
+      const params  = new URLSearchParams(window.location.search);
+      const toParam = params.get("to");
+      if (toParam) {
+        const target = allUsers.find(u => u.UserId == toParam);
+        if (target) openChat(target.UserId, target.name);
+      } else {
+        renderChatWelcome();
+      }
+    });
+
+    /* ══════════════════════════════════
+       RENDER ALL USERS LIST (left panel)
+    ══════════════════════════════════ */
+    function renderAllUsers(users) {
+      document.getElementById("all-users-list").innerHTML = users.map(u => `
+        <div class="all-user-item" id="auser-${u.UserId}"
+             onclick="openChat(${u.UserId}, '${u.name.replace(/'/g,"\\'")}')">
+          <div class="chat-avatar" style="width:34px;height:34px;font-size:0.85rem">
+            ${u.name.charAt(0)}
+          </div>
+          <div>
+            <div class="all-user-name">${u.name}</div>
+            <div class="all-user-occ">${capitalize(u.occupation || "")} · ID ${u.UserId}</div>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    /* Filter users by search input */
+    function filterUsers() {
+      const q       = document.getElementById("user-search").value.toLowerCase();
+      const filtered = allUsers.filter(u =>
+        u.name.toLowerCase().includes(q) ||
+        String(u.UserId).includes(q) ||
+        (u.occupation || "").toLowerCase().includes(q)
+      );
+      renderAllUsers(filtered);
+    }
+
+    /* ══════════════════════════════════
+       CONVERSATIONS LIST (middle)
+    ══════════════════════════════════ */
+    async function loadConversations() {
+      if (!currentUserId) return;
+      const res  = await fetch(`/api/chat/conversations?userId=${currentUserId}`);
+      const data = await res.json();
+      const list = document.getElementById("conv-list");
+
+      if (!data.length) {
+        list.innerHTML = `
+          <div style="padding:1.5rem;text-align:center;color:var(--text2);font-size:0.83rem">
+            No conversations yet.<br>Click a user on the left to start chatting.
+          </div>`;
+        return;
+      }
+
+      list.innerHTML = data.map(c => `
+        <div class="chat-user-item ${activeOtherId == c.otherId ? 'active' : ''}"
+             id="conv-${c.otherId}"
+             onclick="openChat(${c.otherId}, '${c.otherName.replace(/'/g,"\\'")}')">
+          <div class="chat-avatar">${c.otherName.charAt(0)}</div>
+          <div>
+            <div class="chat-user-name">${c.otherName}</div>
+            <div class="chat-user-id">User #${c.otherId}</div>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    /* ══════════════════════════════════
+       OPEN A CHAT
+    ══════════════════════════════════ */
+    async function openChat(otherId, otherName) {
+      const user = authGet();
+      if (!user) { showToast("Please login to chat"); openLogin(); return; }
+
+      currentUserId = user.UserId;
+      activeOtherId = otherId;
+
+      // Highlight in both panels
+      document.querySelectorAll(".all-user-item").forEach(el => el.classList.remove("active"));
+      const auEl = document.getElementById(`auser-${otherId}`);
+      if (auEl) auEl.classList.add("active");
+
+      document.querySelectorAll(".chat-user-item").forEach(el => el.classList.remove("active"));
+      const convEl = document.getElementById(`conv-${otherId}`);
+      if (convEl) convEl.classList.add("active");
+
+      // Build chat UI
+      renderChatUI(otherId, otherName);
+
+      // Load messages
+      await loadMessages(otherId);
+
+      // Reload conversations to include this new chat
+      loadConversations();
+
+      // Poll for new messages every 3 seconds
+      clearInterval(pollInterval);
+      pollInterval = setInterval(() => loadMessages(otherId), 3000);
+    }
+
+    /* ══════════════════════════════════
+       RENDER CHAT AREA
+    ══════════════════════════════════ */
+    function renderChatUI(otherId, otherName) {
+      document.getElementById("chat-main").innerHTML = `
+        <!-- Chat Header -->
+        <div class="chat-header">
+          <div class="chat-avatar">${otherName.charAt(0)}</div>
+          <div>
+            <div style="font-weight:700;font-size:0.95rem">${otherName}</div>
+            <div style="font-size:0.75rem;color:var(--text2)">User #${otherId}</div>
+          </div>
+        </div>
+
+        <!-- Messages -->
+        <div class="chat-messages" id="msg-container"></div>
+
+        <!-- Input -->
+        <div class="chat-input-area">
+          <input class="chat-input" type="text" id="msg-input"
+                 placeholder="Type a message..."
+                 onkeydown="if(event.key==='Enter') sendMessage()">
+          <button class="btn btn-primary" style="border-radius:50%;width:42px;height:42px;padding:0;font-size:1.1rem"
+                  onclick="sendMessage()">➤</button>
+        </div>
+      `;
+    }
+
+    function renderLoginPrompt() {
+      document.getElementById("chat-main").innerHTML = `
+        <div class="chat-login-prompt">
+          <div class="big-icon">💬</div>
+          <h3 style="color:var(--text)">Connect with Property Owners</h3>
+          <p>Login to start chatting with property owners and flatmates</p>
+          <button class="btn btn-primary" onclick="openLogin()">Login to Chat</button>
+        </div>`;
+    }
+
+    function renderChatWelcome() {
+      document.getElementById("chat-main").innerHTML = `
+        <div class="chat-login-prompt">
+          <div class="big-icon">👈</div>
+          <h3 style="color:var(--text)">Select a User to Chat</h3>
+          <p>Pick someone from the left panel to start a conversation</p>
+        </div>`;
+    }
+
+    /* ══════════════════════════════════
+       LOAD MESSAGES
+    ══════════════════════════════════ */
+    async function loadMessages(otherId) {
+      if (!currentUserId) return;
+      const res  = await fetch(`/api/chat/messages?userId=${currentUserId}&otherId=${otherId}`);
+      const msgs = await res.json();
+      const container = document.getElementById("msg-container");
+      if (!container) return;
+
+      if (!msgs.length) {
+        container.innerHTML = `
+          <div class="chat-empty">
+            <div style="font-size:2.5rem">👋</div>
+            <div>Say hello to start the conversation!</div>
+          </div>`;
+        return;
+      }
+
+      // Preserve scroll position if near bottom
+      const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 80;
+
+      container.innerHTML = msgs.map(m => {
+        const isMine = m.senderId === currentUserId;
+        return `
+          <div style="display:flex;flex-direction:column;align-items:${isMine ? 'flex-end' : 'flex-start'}">
+            ${!isMine ? `<span style="font-size:0.72rem;color:var(--text2);margin-bottom:2px;padding-left:4px">${m.senderName}</span>` : ""}
+            <div class="msg-bubble ${isMine ? 'msg-sent' : 'msg-recv'}">
+              ${escapeHTML(m.message)}
+              <div class="msg-time">${m.time.slice(11,16)}</div>
+            </div>
+          </div>`;
+      }).join("");
+
+      // Scroll to bottom if was already near bottom
+      if (isAtBottom) container.scrollTop = container.scrollHeight;
+    }
+
+    /* ══════════════════════════════════
+       SEND MESSAGE
+    ══════════════════════════════════ */
+    async function sendMessage() {
+      const input = document.getElementById("msg-input");
+      const text  = input.value.trim();
+      if (!text || !activeOtherId || !currentUserId) return;
+
+      input.value = "";
+
+      await fetch("/api/chat/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          senderId:   currentUserId,
+          recieverId: activeOtherId,
+          message:    text,
+        })
+      });
+
+      // Immediately reload messages
+      await loadMessages(activeOtherId);
+      loadConversations();
+    }
+
+    /* ══════════════════════════════════
+       UTILITY
+    ══════════════════════════════════ */
+    function escapeHTML(str) {
+      return String(str)
+        .replace(/&/g,  "&amp;")
+        .replace(/</g,  "&lt;")
+        .replace(/>/g,  "&gt;")
+        .replace(/"/g,  "&quot;");
+    }
+  </script>
+</body>
+</html>

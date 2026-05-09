@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Predict Price – Aashiyana</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    /* ── Page layout ── */
+    .sell-body {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    /* ── Hero banner ── */
+    .sell-hero {
+      background: linear-gradient(135deg, var(--navy2) 0%, #2a1a4e 100%);
+      border-radius: var(--radius-lg);
+      padding: 2rem 2.5rem;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    .sell-hero-icon { font-size: 3rem; }
+    .sell-hero h1  { font-size: 1.7rem; color: #fff; margin-bottom: 0.3rem; }
+    .sell-hero p   { font-size: 0.9rem; color: rgba(255,255,255,0.6); }
+
+    /* ── Form card ── */
+    .form-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      box-shadow: 0 4px 24px var(--shadow);
+    }
+
+    /* ── Section heading inside form ── */
+    .form-section-title {
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--accent);
+      margin: 1.5rem 0 0.9rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .form-section-title:first-child { margin-top: 0; }
+
+    /* ── Radio pill group ── */
+    .radio-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .radio-pill input[type="radio"] { display: none; }
+    .radio-pill label {
+      padding: 0.42rem 1.05rem;
+      border-radius: 25px;
+      border: 1.5px solid var(--border);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text2);
+      transition: all 0.2s;
+      background: var(--bg);
+      display: inline-block;
+    }
+    .radio-pill input[type="radio"]:checked + label {
+      background: var(--accent);
+      color: var(--navy);
+      border-color: var(--accent);
+    }
+    .radio-pill label:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── +/- counter ── */
+    .counter-group {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .counter-btn {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+      line-height: 1;
+    }
+    .counter-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(201,152,42,0.08); }
+    .counter-val {
+      min-width: 36px;
+      text-align: center;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* ── Grid layout for fields ── */
+    .field-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.1rem 1.5rem;
+    }
+    .field-grid .full { grid-column: 1 / -1; }
+
+    .field-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 0.45rem;
+      display: block;
+    }
+
+    /* ── Predict button ── */
+    .predict-btn {
+      width: 100%;
+      padding: 1rem;
+      font-size: 1rem;
+      font-weight: 800;
+      border-radius: var(--radius-lg);
+      border: none;
+      background: linear-gradient(135deg, var(--accent), #e8b430);
+      color: var(--navy);
+      cursor: pointer;
+      margin-top: 1.8rem;
+      font-family: 'DM Sans', sans-serif;
+      letter-spacing: 0.5px;
+      transition: opacity 0.2s, transform 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+    }
+    .predict-btn:hover   { opacity: 0.9; }
+    .predict-btn:active  { transform: scale(0.98); }
+    .predict-btn:disabled{ opacity: 0.5; cursor: not-allowed; }
+
+    /* ── Result card ── */
+    .result-card {
+      display: none;
+      margin-top: 1.5rem;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      text-align: center;
+      border: 1px solid rgba(201,152,42,0.3);
+      animation: fadeUp 0.4s ease;
+    }
+    .result-card.show { display: block; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .result-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: rgba(255,255,255,0.55);
+      margin-bottom: 0.5rem;
+    }
+    .result-price {
+      font-family: 'Playfair Display', serif;
+      font-size: 3rem;
+      font-weight: 700;
+      color: #C9982A;
+      line-height: 1;
+      margin-bottom: 0.4rem;
+    }
+    .result-sub {
+      font-size: 0.82rem;
+      color: rgba(255,255,255,0.45);
+    }
+    .result-range {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-top: 1.2rem;
+    }
+    .result-range-item { text-align: center; }
+    .result-range-val  { font-size: 1rem; font-weight: 700; color: #fff; }
+    .result-range-lbl  { font-size: 0.7rem; color: rgba(255,255,255,0.4); margin-top: 2px; }
+
+    /* Error state */
+    .result-error {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: var(--radius);
+      padding: 1rem;
+      color: #ef4444;
+      font-size: 0.88rem;
+      margin-top: 1rem;
+      display: none;
+    }
+    .result-error.show { display: block; }
+
+    /* Spinner inside button */
+    .btn-spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(26,26,46,0.3);
+      border-top-color: var(--navy);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 600px) {
+      .field-grid { grid-template-columns: 1fr; }
+      .sell-hero  { flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar injected by main.js -->
+  <div class="page-body">
+    <div class="sell-body">
+
+      <!-- Hero -->
+      <div class="sell-hero">
+        <div class="sell-hero-icon">🤖</div>
+        <div>
+          <h1>AI Price Predictor</h1>
+          <p>Get an instant ML-powered price estimate for any property in Gurugram.<br>
+             Powered by a Random Forest model trained on 3,500+ real listings.</p>
+        </div>
+      </div>
+
+      <!-- Form -->
+      <div class="form-card">
+
+        <!-- ① Property Type -->
+        <div class="form-section-title">① Property Type</div>
+        <div class="radio-group" id="rg-type">
+          <div class="radio-pill">
+            <input type="radio" name="property_type" id="pt-flat" value="flat" checked>
+            <label for="pt-flat">🏢 Flat</label>
+          </div>
+          <div class="radio-pill">
+            <input type="radio" name="property_type" id="pt-house" value="house">
+            <label for="pt-house">🏠 House</label>
+          </div>
+        </div>
+
+        <!-- ② Location -->
+        <div class="form-section-title">② Location</div>
+        <div>
+          <span class="field-label">Sector</span>
+          <select class="form-select" id="sector-sel"></select>
+        </div>
+
+        <!-- ③ Property Specs -->
+        <div class="form-section-title">③ Property Specs</div>
+        <div class="field-grid">
+
+          <!-- Bedrooms -->
+          <div>
+            <span class="field-label">Bedrooms</span>
+            <div class="counter-group">
+              <button class="counter-btn" onclick="decr('bedRoom',1,10)">−</button>
+              <span class="counter-val" id="bedRoom-val">2</span>
+              <button class="counter-btn" onclick="incr('bedRoom',1,10)">+</button>
+            </div>
+          </div>
+
+          <!-- Bathrooms -->
+          <div>
+            <span class="field-label">Bathrooms</span>
+            <div class="counter-group">
+              <button class="counter-btn" onclick="decr('bathroom',1,10)">−</button>
+              <span class="counter-val" id="bathroom-val">2</span>
+              <button class="counter-btn" onclick="incr('bathroom',1,10)">+</button>
+            </div>
+          </div>
+
+          <!-- Balconies -->
+          <div>
+            <span class="field-label">Balconies</span>
+            <div class="counter-group">
+              <button class="counter-btn" onclick="decr('balcony',0,5)">−</button>
+              <span class="counter-val" id="balcony-val">1</span>
+              <button class="counter-btn" onclick="incr('balcony',0,5)">+</button>
+            </div>
+          </div>
+
+          <!-- Built-up Area -->
+          <div>
+            <span class="field-label">Built-up Area (sqft)</span>
+            <input class="form-input" type="number" id="built_up_area"
+                   placeholder="e.g. 1200" min="100" max="50000" value="1200">
+          </div>
+
+          <!-- Servant Room -->
+          <div>
+            <span class="field-label">Servant Room</span>
+            <select class="form-select" id="servant_room">
+              <option value="0">No</option>
+              <option value="1">Yes</option>
+            </select>
+          </div>
+
+          <!-- Store Room -->
+          <div>
+            <span class="field-label">Store Room</span>
+            <select class="form-select" id="store_room">
+              <option value="0">No</option>
+              <option value="1">Yes</option>
+            </select>
+          </div>
+
+          <!-- Age / Possession -->
+          <div class="full">
+            <span class="field-label">Age / Possession</span>
+            <select class="form-select" id="agePossession">
+              <option value="New Property">New Property</option>
+              <option value="Relatively New">Relatively New</option>
+              <option value="Moderately Old">Moderately Old</option>
+              <option value="Old Property">Old Property</option>
+              <option value="Under Construction">Under Construction</option>
+            </select>
+          </div>
+
+        </div><!-- /.field-grid -->
+
+        <!-- ④ Furnishing -->
+        <div class="form-section-title">④ Furnishing Type</div>
+        <div class="radio-group">
+          <div class="radio-pill">
+            <input type="radio" name="furnishing_type" id="fu-un" value="unfurnished" checked>
+            <label for="fu-un">🪑 Unfurnished</label>
+          </div>
+          <div class="radio-pill">
+            <input type="radio" name="furnishing_type" id="fu-semi" value="semifurnished">
+            <label for="fu-semi">🛋 Semi-Furnished</label>
+          </div>
+          <div class="radio-pill">
+            <input type="radio" name="furnishing_type" id="fu-full" value="furnished">
+            <label for="fu-full">✨ Furnished</label>
+          </div>
+        </div>
+
+        <!-- ⑤ Luxury Category -->
+        <div class="form-section-title">⑤ Luxury Category</div>
+        <div class="radio-group">
+          <div class="radio-pill">
+            <input type="radio" name="luxury_category" id="lx-low" value="Low" checked>
+            <label for="lx-low">🟢 Low</label>
+          </div>
+          <div class="radio-pill">
+            <input type="radio" name="luxury_category" id="lx-med" value="Medium">
+            <label for="lx-med">🟡 Medium</label>
+          </div>
+          <div class="radio-pill">
+            <input type="radio" name="luxury_category" id="lx-high" value="High">
+            <label for="lx-high">🔴 High</label>
+          </div>
+        </div>
+
+        <!-- ⑥ Floor Category -->
+        <div class="form-section-title">⑥ Floor Category</div>
+        <div class="radio-group">
+          <div class="radio-pill">
+            <input type="radio" name="floor_category" id="fl-low" value="Low Floor" checked>
+            <label for="fl-low">⬇️ Low Floor</label>
+          </div>
+          <div class="radio-pill">
+            <input type="radio" name="floor_category" id="fl-mid" value="Mid Floor">
+            <label for="fl-mid">🏢 Mid Floor</label>
+          </div>
+          <div class="radio-pill">
+            <input type="radio" name="floor_category" id="fl-high" value="High Floor">
+            <label for="fl-high">⬆️ High Floor</label>
+          </div>
+        </div>
+
+        <!-- Predict Button -->
+        <button class="predict-btn" id="predict-btn" onclick="predictPrice()">
+          <div class="btn-spinner" id="btn-spinner"></div>
+          <span id="btn-text">🔮 Predict Price</span>
+        </button>
+
+        <!-- Result -->
+        <div class="result-card" id="result-card">
+          <div class="result-label">Estimated Property Price</div>
+          <div class="result-price" id="result-price">—</div>
+          <div class="result-sub" id="result-sub">Based on current Gurugram market data</div>
+          <div class="result-range">
+            <div class="result-range-item">
+              <div class="result-range-val" id="range-low">—</div>
+              <div class="result-range-lbl">Conservative (−15%)</div>
+            </div>
+            <div class="result-range-item">
+              <div class="result-range-val" id="range-high">—</div>
+              <div class="result-range-lbl">Optimistic (+15%)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Error -->
+        <div class="result-error" id="result-error"></div>
+
+      </div><!-- /.form-card -->
+    </div><!-- /.sell-body -->
+  </div>
+
+  <script src="/static/js/main.js"></script>
+  <script>
+    /* ── Counter state ── */
+    const counters = { bedRoom: 2, bathroom: 2, balcony: 1 };
+
+    function incr(key, min, max) {
+      if (counters[key] < max) {
+        counters[key]++;
+        document.getElementById(`${key}-val`).textContent = counters[key];
+      }
+    }
+    function decr(key, min, max) {
+      if (counters[key] > min) {
+        counters[key]--;
+        document.getElementById(`${key}-val`).textContent = counters[key];
+      }
+    }
+
+    /* ── Load sectors from API ── */
+    async function loadSectors() {
+      const res  = await fetch("/api/sectors");
+      const data = await res.json();
+      const sel  = document.getElementById("sector-sel");
+      data.forEach(s => {
+        const o = document.createElement("option");
+        o.value = s;
+        o.textContent = capitalize(s);
+        if (s === "sector 46") o.selected = true;  // sensible default
+        sel.appendChild(o);
+      });
+    }
+
+    /* ── Helper: format price in Cr / L ── */
+    function fmtCr(cr) {
+      if (cr < 1) return `₹${Math.round(cr * 100)}L`;
+      return `₹${cr.toFixed(2)} Cr`;
+    }
+
+    /* ── Get radio value ── */
+    function radioVal(name) {
+      return document.querySelector(`input[name="${name}"]:checked`)?.value || "";
+    }
+
+    /* ── Predict ── */
+    async function predictPrice() {
+      const btn     = document.getElementById("predict-btn");
+      const spinner = document.getElementById("btn-spinner");
+      const btnTxt  = document.getElementById("btn-text");
+      const resCard = document.getElementById("result-card");
+      const errDiv  = document.getElementById("result-error");
+
+      // Validate
+      const area = parseFloat(document.getElementById("built_up_area").value);
+      if (!area || area < 100) {
+        showToast("Please enter a valid built-up area (min 100 sqft)");
+        return;
+      }
+
+      // Loading state
+      btn.disabled    = true;
+      spinner.style.display = "block";
+      btnTxt.textContent    = "Predicting…";
+      resCard.classList.remove("show");
+      errDiv.classList.remove("show");
+
+      const payload = {
+        property_type:  radioVal("property_type"),
+        sector:         document.getElementById("sector-sel").value,
+        bedRoom:        counters.bedRoom,
+        bathroom:       counters.bathroom,
+        balcony:        String(counters.balcony),
+        agePossession:  document.getElementById("agePossession").value,
+        built_up_area:  area,
+        servant_room:   parseInt(document.getElementById("servant_room").value),
+        store_room:     parseInt(document.getElementById("store_room").value),
+        furnishing_type:radioVal("furnishing_type"),
+        luxury_category:radioVal("luxury_category"),
+        floor_category: radioVal("floor_category"),
+      };
+
+      try {
+        const res  = await fetch("/api/predict", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify(payload),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          const cr   = data.price_cr;
+          const low  = fmtCr(cr * 0.85);
+          const high = fmtCr(cr * 1.15);
+
+          document.getElementById("result-price").textContent = data.display;
+          document.getElementById("result-sub").textContent   =
+            `${capitalize(payload.sector)} · ${payload.bedRoom} BHK · ${area} sqft`;
+          document.getElementById("range-low").textContent  = low;
+          document.getElementById("range-high").textContent = high;
+          resCard.classList.add("show");
+
+          // Scroll to result
+          resCard.scrollIntoView({ behavior: "smooth", block: "center" });
+        } else {
+          errDiv.textContent = "Prediction failed: " + (data.message || "Unknown error");
+          errDiv.classList.add("show");
+        }
+      } catch (e) {
+        errDiv.textContent = "Network error — make sure the server is running.";
+        errDiv.classList.add("show");
+      } finally {
+        btn.disabled          = false;
+        spinner.style.display = "none";
+        btnTxt.textContent    = "🔮 Predict Price";
+      }
+    }
+
+    /* ── Allow Enter key in area field to trigger prediction ── */
+    document.getElementById("built_up_area")
+      .addEventListener("keydown", e => { if (e.key === "Enter") predictPrice(); });
+
+    /* ── Init ── */
+    document.addEventListener("DOMContentLoaded", loadSectors);
+  </script>
+</body>
+</html>
